@@ -269,7 +269,7 @@ void AASession::onStart(uint8_t channel, const Message& message) {
            session == kNoField ? 0u : session);
 }
 
-// Media of any channel: counted, video handed to the callbacks, everything acked except cut-short video.
+// Media of any channel: counted, video handed to the callbacks, everything acked, cut-short video included.
 void AASession::onMedia(uint8_t channel, uint16_t id, const Message& message) {
     ++mediaMessages_;
     if (mediaMessages_ % kMediaLogEvery == 1) {
@@ -291,14 +291,14 @@ void AASession::onMedia(uint8_t channel, uint16_t id, const Message& message) {
     } else if (channel == channel::kVideo) {
         // Cut at the protocol's offsets, never by scanning: a timestamp can hold 00 00 01 and look like a start code.
         const size_t offset = id == msg::kMediaConfig ? kMessageIdSize : kTimestampedHeader;
-        if (message.size() <= offset) {
+        // Dropped, but still acked like the rest: the phone allows max_unacked messages without an ack, so ten drops
+        // would stop the video for the rest of the session.
+        const uint8_t* data = message.size() > offset ? &message[offset] : nullptr;
+        const size_t size = data ? message.size() - offset : 0;
+        if (!data) {
             printf("[AASession] Dropping truncated/empty video message 0x%04X (%u bytes).\n", id,
                    static_cast<unsigned>(message.size()));
-            return;
-        }
-        const uint8_t* data = &message[offset];
-        const size_t size = message.size() - offset;
-        if (id == msg::kMediaConfig) {
+        } else if (id == msg::kMediaConfig) {
             printf("[AASession] >>> Received H.264 SPS/PPS codec config (%u bytes)!\n", static_cast<unsigned>(size));
             if (codec_.fn) {
                 codec_.fn(data, size, codec_.user);
@@ -311,6 +311,12 @@ void AASession::onMedia(uint8_t channel, uint16_t id, const Message& message) {
         }
     }
     sendSealed(channel, message::mediaAck(mediaSessions_[channel & 31]));
+}
+
+void AASession::ackDropped(uint8_t channel) {
+    if (channel == channel::kVideo || channel::isAudioSink(channel)) {
+        sendSealed(channel, message::mediaAck(mediaSessions_[channel & 31]));
+    }
 }
 
 // The phone's "exit to car" icon asks for the native screen; the same answer is given and the callback hides the

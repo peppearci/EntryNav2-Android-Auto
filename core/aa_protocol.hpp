@@ -37,6 +37,9 @@ const size_t kHeaderSize = 4;
 const size_t kTotalSizeSize = 4;
 const size_t kMaxPayload = 0xFFFF;
 const size_t kMaxMessage = 8u * 1024u * 1024u;  // reassembly bound: a lost LAST must not grow a buffer for ever
+// The same across all channels together: the channel is a byte the peer chooses, and 256 channels of kMaxMessage each
+// would be 2 GiB, before any TLS.
+const size_t kMaxPending = 16u * 1024u * 1024u;
 
 // Low two bits: where the frame sits in its message.
 const uint8_t kPositionMask = 0x03;

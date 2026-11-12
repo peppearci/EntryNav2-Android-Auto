@@ -473,6 +473,9 @@ AASession::Received AASession::receive(uint8_t& channel, Message& wire, Message&
             return kNothing;
         case MessageAssembler::kOverflow:
             printf("[AASession] Reassembly overflow on channel %u: dropping fragments.\n", channel);
+            ackDropped(channel);
+            return kNothing;
+        case MessageAssembler::kSkipped:
             return kNothing;
         case MessageAssembler::kNoFirst:
             printf("[AASession] Continuation fragment on channel %u with no FIRST: dropping\n", channel);
@@ -480,6 +483,7 @@ AASession::Received AASession::receive(uint8_t& channel, Message& wire, Message&
         case MessageAssembler::kShortOfSize:
             printf("[AASession] channel %u reassembled %u wire bytes, phone announced %u: dropping\n", channel,
                    assembler_.receivedBytes(), assembler_.announcedBytes());
+            ackDropped(channel);
             return kNothing;
     }
     if (logged) {

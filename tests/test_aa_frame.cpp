@@ -91,12 +91,35 @@ void reassembly() {
     a.drop(6);
     CHECK(a.add(header(6, aa::frame::kLast, 10), Bytes({3}), m) == aa::MessageAssembler::kNoFirst);
 
-    // Bounded: past 8 MiB on one channel the fragments go, whatever the frame.
+    // Bounded: past 8 MiB on one channel the message goes, and the rest of its fragments with it, quietly, so that its
+    // tail never comes out as a message of its own. A whole message passes through all along.
     const Bytes big(aa::frame::kMaxMessage - 10, 0);
     CHECK(a.add(header(6, aa::frame::kFirst, 1, 9), big, m) == aa::MessageAssembler::kPending);
     CHECK(a.add(header(6, aa::frame::kMiddle, 1), Bytes(10, 0), m) == aa::MessageAssembler::kPending);
-    CHECK(a.add(header(6, aa::frame::kWhole, 1), Bytes(1, 0), m) == aa::MessageAssembler::kOverflow);
-    CHECK(a.add(header(6, aa::frame::kLast, 1), Bytes(1, 0), m) == aa::MessageAssembler::kNoFirst);
+    CHECK(a.add(header(6, aa::frame::kWhole, 1), Bytes(1, 0), m) == aa::MessageAssembler::kComplete);
+    CHECK(a.add(header(6, aa::frame::kMiddle, 1), Bytes(1, 0), m) == aa::MessageAssembler::kOverflow);
+    CHECK(a.add(header(6, aa::frame::kMiddle, 1), Bytes(5, 0), m) == aa::MessageAssembler::kSkipped);
+    CHECK(a.add(header(6, aa::frame::kWhole, 1), Bytes(1, 7), m) == aa::MessageAssembler::kComplete && m[0] == 7);
+    CHECK(a.add(header(6, aa::frame::kLast, 1), Bytes(1, 0), m) == aa::MessageAssembler::kSkipped);
+    CHECK(a.add(header(6, aa::frame::kFirst, 1, 0), Bytes(1, 1), m) == aa::MessageAssembler::kPending);
+    CHECK(a.add(header(6, aa::frame::kLast, 1), Bytes(1, 2), m) == aa::MessageAssembler::kComplete);
+    CHECK(m == Bytes({1, 2}));
+    // A new FIRST ends the skipping too.
+    CHECK(a.add(header(6, aa::frame::kFirst, 1, 9), big, m) == aa::MessageAssembler::kPending);
+    CHECK(a.add(header(6, aa::frame::kMiddle, 1), Bytes(11, 0), m) == aa::MessageAssembler::kOverflow);
+    CHECK(a.add(header(6, aa::frame::kFirst, 1, 0), Bytes(1, 3), m) == aa::MessageAssembler::kPending);
+    CHECK(a.add(header(6, aa::frame::kLast, 1), Bytes(1, 4), m) == aa::MessageAssembler::kComplete);
+    CHECK(m == Bytes({3, 4}));
+    a.clear();
+
+    // And 16 MiB for all channels together: the channel is a byte the peer chooses.
+    const Bytes almost(aa::frame::kMaxMessage - 1, 0);
+    CHECK(a.add(header(1, aa::frame::kFirst, 1, 0), almost, m) == aa::MessageAssembler::kPending);
+    CHECK(a.add(header(2, aa::frame::kFirst, 1, 0), almost, m) == aa::MessageAssembler::kPending);
+    CHECK(a.add(header(3, aa::frame::kFirst, 1, 0), Bytes(10, 0), m) == aa::MessageAssembler::kOverflow);
+    CHECK(a.add(header(3, aa::frame::kLast, 1), Bytes(1, 0), m) == aa::MessageAssembler::kNoFirst);
+    a.drop(1);
+    CHECK(a.add(header(3, aa::frame::kFirst, 1, 0), Bytes(10, 0), m) == aa::MessageAssembler::kPending);
     a.clear();
 }
 
@@ -105,6 +128,8 @@ void reassembly() {
 int main() {
     headers();
     reassembly();
-    puts("PASS frames: header both ways, 64 KiB limit, reassembly per channel, orphan fragments, size checks");
+    puts(
+        "PASS frames: header both ways, 64 KiB limit, reassembly per channel, orphan fragments, size checks, 8 MiB and "
+        "16 MiB bounds");
     return 0;
 }

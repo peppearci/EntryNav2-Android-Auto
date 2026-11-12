@@ -40,9 +40,11 @@ public:
     enum Outcome {
         kPending,      // a FIRST or MIDDLE fragment, kept
         kComplete,     // `message` holds a whole message
-        kOverflow,     // the channel's message would pass frame::kMaxMessage: its fragments are dropped
+        kOverflow,     // the channel's message would pass frame::kMaxMessage, or all channels' frame::kMaxPending:
+                       // dropped, and the rest of its fragments with it (kSkipped)
         kNoFirst,      // a MIDDLE or LAST fragment without a FIRST on its channel: dropped
         kShortOfSize,  // a LAST fragment closed a message smaller than announced: dropped
+        kSkipped,      // a MIDDLE or LAST fragment of a message dropped at kOverflow: dropped quietly
     };
 
     MessageAssembler() : received_(0), announced_(0) {}
@@ -62,8 +64,10 @@ private:
         bool sized;       // a FIRST fragment announced a size
         uint32_t size;    // that size
         uint32_t onWire;  // the length fields received so far
-        Pending() : sized(false), size(0), onWire(0) {}
+        bool skipping;    // the message overflowed: its fragments up to its LAST are dropped
+        Pending() : sized(false), size(0), onWire(0), skipping(false) {}
     };
+    size_t pendingBytes() const;  // held for all channels together
     std::map<uint8_t, Pending> pending_;
     uint32_t received_;
     uint32_t announced_;

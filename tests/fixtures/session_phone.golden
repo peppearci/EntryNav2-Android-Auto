@@ -78,7 +78,7 @@ ph ch=8 fl=0b 8002 -
 ph ch=9 fl=0b 8002 -
 ph ch=2 fl=0b 8002 -
 ph ch=0 fl=03 000b 08857f
-hu ch=6 fl=0b 8004 08051001 (x3)
+hu ch=6 fl=0b 8004 08051001 (x5)
 hu ch=8 fl=0b 8004 08071001 (x2)
 hu ch=9 fl=0b 8004 08001001
 hu ch=4 fl=0b 8004 08a1021001
@@ -338,6 +338,7 @@ hu ch=0 fl=03 000c 08837f
 ph ch=6 fl=09 piece 0000000000000000002a6061
 ph ch=6 fl=0a piece 62636465666768696a6b6c6d6e6f70717273
 ph ch=0 fl=03 000b 08847f
+hu ch=6 fl=0b 8004 08031001
 hu ch=0 fl=03 000c 08847f
 -- FIRST announcing 0
 ph ch=6 fl=09 piece 0000000000000000002a6061
@@ -373,6 +374,7 @@ ph ch=6 fl=0b 05
 ph ch=8 fl=0b 05
 ph ch=0 fl=03 000b 08897f
 hu ch=0 fl=0b 8004 08001001
+hu ch=6 fl=0b 8004 08031001
 hu ch=8 fl=0b 8004 08001001
 hu ch=0 fl=03 000c 08897f
 -- a second version response restarts TLS
