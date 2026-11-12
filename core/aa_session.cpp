@@ -378,6 +378,12 @@ bool AASession::sendExactly(const uint8_t* data, size_t size) {
             continue;
         }
         if (n <= 0) {
+            // Part of a frame may be on the wire, and a sealed frame has moved the TLS sequence on either way: nothing
+            // sent after this would make sense to the phone. The session ends (its receive fails) instead of carrying
+            // on unheard.
+            printf("[AASession] send failed after %u of %u bytes (%s): ending the session.\n",
+                   static_cast<unsigned>(sent), static_cast<unsigned>(size), n < 0 ? strerror(errno) : "closed");
+            shutdown(fd, SHUT_RDWR);
             return false;
         }
         sent += static_cast<size_t>(n);
