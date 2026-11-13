@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <limits>
 
 #include "aa_protocol.hpp"
 #include "crash_handler.hpp"
@@ -350,8 +351,15 @@ bool AASession::receiveExactly(uint8_t* to, size_t size) {
             continue;
         }
         lastDataMs = locationClockMs();
-        if (lastReceivedMs_ && lastDataMs - lastReceivedMs_ > longestSilenceMs_.load()) {
-            longestSilenceMs_.store(static_cast<uint32_t>(lastDataMs - lastReceivedMs_));
+        if (lastReceivedMs_) {
+            // The main thread empties it (takeLongestSilenceMs) at any time: a plain load and store could put back
+            // a value it already took, or skip a silence because it compared against one.
+            const uint64_t gap = lastDataMs - lastReceivedMs_;
+            const uint32_t most = std::numeric_limits<uint32_t>::max();
+            const uint32_t silence = gap > most ? most : static_cast<uint32_t>(gap);
+            uint32_t longest = longestSilenceMs_.load();
+            while (silence > longest && !longestSilenceMs_.compare_exchange_weak(longest, silence)) {
+            }
         }
         lastReceivedMs_ = lastDataMs;
         const ssize_t n = recv(fd, to + got, size - got, 0);
