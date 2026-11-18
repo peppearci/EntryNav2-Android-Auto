@@ -31,7 +31,7 @@ ancienne, suivre celle de l'archive (dans la 0.10.0, le superviseur s'appelle `e
 Depuis le PC, dans le dossier de l'archive :
 
 ```sh
-scp entrynav2-android-auto-0.13.0-rc.3-armhf.tar root@169.254.1.0:/tmp/
+scp entrynav2-android-auto-0.13.0-rc.4-armhf.tar root@169.254.1.0:/tmp/
 ssh root@169.254.1.0
 ```
 
@@ -43,7 +43,7 @@ encore écrit sur la mémoire flash.
 Rien n'est modifié pendant cette étape.
 
 ```sh
-V=0.13.0-rc.3
+V=0.13.0-rc.4
 cd /tmp && rm -rf entrynav2-android-auto-$V && tar -xf entrynav2-android-auto-$V-armhf.tar && cd entrynav2-android-auto-$V
 md5sum -c MD5SUMS
 head -n 1 /etc/version
@@ -98,11 +98,15 @@ cd / && md5sum -c /tmp/entrynav2-android-auto-$V/MD5SUMS
 - Le dernier `md5sum -c` relit les fichiers installés : chacun doit répondre `OK`.
 - Si `mount -o remount,ro /` échoue, le redémarrage qui suit remet le système en lecture seule.
 
-Facultatif, le modèle et l'année que le téléphone affiche pour la voiture. Sans ce fichier, il affiche une BMW
-« iDrive » de 2019 : l'unité ne connaît pas le nom du modèle.
+Facultatif, le modèle et l'année que le téléphone affiche pour la voiture. Sans ce fichier, il affiche « iDrive »
+et 2019 : l'unité ne connaît pas le nom du modèle. La marque, BMW ou MINI, vient du codage de l'iDrive et ne se règle
+pas ici.
+
+Remplacer `MODELE` et `ANNEE` par ceux de la voiture (par exemple `320d` et `2020`, ou `Cooper S` et `2019`) ;
+24 caractères au plus pour le modèle : lettres sans accent, chiffres, espaces, `-`, `.` et `_`.
 
 ```sh
-mkdir -p /var/local/data/AA && printf 'model=320d\nyear=2020\n' > /var/local/data/AA/vehicle
+mkdir -p /var/local/data/AA && printf 'model=MODELE\nyear=ANNEE\n' > /var/local/data/AA/vehicle
 ```
 
 Puis redémarrer l'unité :

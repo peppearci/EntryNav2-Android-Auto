@@ -2,8 +2,8 @@
 
 ## Voitures concernées
 
-Une BMW avec une **unité EntryNav2** (appelée EntryEVO dans son système). Le sans-fil passe par le **Wi-Fi de
-CarPlay** de l'unité ; sans lui, le [câble USB](USB.md) marche aussi. Écrans essayés en voiture : **1280x480** et
+Une BMW ou une MINI avec une **unité EntryNav2** (appelée EntryEVO dans son système). Le sans-fil passe par le
+**Wi-Fi de CarPlay** de l'unité ; sans lui, le [câble USB](USB.md) marche aussi. Écrans essayés en voiture : **1280x480** et
 **800x480** (voir [plus bas](#autres-tailles-décran)).
 
 Les NBT Evo, ID7 et MGU tournent sur d'autres systèmes : ce programme ne peut pas s'y exécuter. L'installation demande
@@ -18,12 +18,25 @@ rapports de leurs propriétaires : elles disent ce qu'ils ont vu, avec la versio
 |---|---|---|---|---|---|
 | G20 de 2019 (référence) | `202111011321` | 1280x480 | sans fil, USB | 0.12.0-rc.12 | celles du [README](../README.fr.md#ce-que-ça-fait), limites dans la [feuille de route](../ROADMAP.md#limites-connues) |
 | G20 de 2019 | `202207190806` | 1280x480 | sans fil | 0.12.0-rc.6 | marche ; lenteur au bout d'une minute avec un Galaxy Z Fold7, disparue en bloquant My BMW ([#44](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/44)) |
-| G21 320d de 2020 | `202402191339` | 1280x480 | sans fil | 0.12.0-rc.2 | marche, guidage au compteur avec Waze ; lenteur en sans-fil avec un Galaxy S26 Ultra ([#26](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/26)) |
-| X3 G01 de 2020 | `202003311616` | 1280x480 | sans fil, USB | 0.12.0-rc.6 | marche, double MEDIA ; flèches au compteur avec `kombi-single-maneuver` ; lenteur en sans-fil avec un Galaxy S24+ ([#17](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/17)) |
-| F30 330d LCI de 2018 | `202402191339` | 1280x480 | sans fil | 0.12.0-rc.6 | marche, ancien contrôleur ; touche MAP non reconnue sur ce contrôleur ([#43](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/43)) |
-| F45 225xe | non indiqué | 1280x480 | sans fil, USB | 0.12.0-rc.6 | marche ; lenteur en sans-fil, fluide par câble ; glissements tactiles à l'étude ([discussion #30](https://github.com/Jiraiya43/EntryNav2-Android-Auto/discussions/30)) |
-| F20 118i de 2018 | `202402191339` | 800x480 | USB (unité sans Wi-Fi) | 0.12.0-rc.6 | marche ; pastille du volume pas vue ([#45](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/45)) |
-| i3 | `202012141616` | 800x480 | USB ; sans fil avec une clé Wi-Fi USB | 0.13.0-alpha.2 | marche, ancien contrôleur ([#19](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/19)) |
+| G21 320d de 2020 | `202402191339` | 1280x480 | sans fil | 0.12.0 | marche, guidage au compteur avec Waze ; lenteur en sans-fil avec un Galaxy S26 Ultra, partie avec une mise à jour d'Android Auto puis revenue ; caméra et vue panorama ouvertes par leur bouton restées sous Android Auto, à l'étude ([#26](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/26)) |
+| X3 G01 de 2020 | `202003311616` | 1280x480 | sans fil, USB | 0.13.0-rc.1 | marche, double MEDIA ; flèches au compteur avec `kombi-single-maneuver` ; lenteur en sans-fil avec un Galaxy S24+ ([#17](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/17)) ; la touche favorite du son Bluetooth fait quitter Android Auto ([#87](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/87)) |
+| F20 118i LCI de 2018 | `202402191339` | 800x480 | USB ; sans fil aussi, sans CarPlay activé ni antenne Wi-Fi, téléphone près de la console | 0.12.1-rc.4 | marche, ancien contrôleur ; pastille du volume vue après un redémarrage ; MEDIA, COM et double MEDIA ([#45](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/45), [#55](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/55)) |
+| F20 120i LCI de 2019 | `201811150004` | 1280x480 (écran de 8,8 pouces monté après coup) | USB (unité sans Wi-Fi) | 0.12.1-rc.4 | marche ; bouton vocal sans effet ([discussion #28](https://github.com/Jiraiya43/EntryNav2-Android-Auto/discussions/28)) |
+| F21 de 2018 | non indiqué | non relevé | USB | 0.12.1-rc.3 | marche ; commandes vocales lentes, avec AAIdrive installé aussi ([#68](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/68)) |
+| F30 330d LCI de 2018 | `202402191339` | 1280x480 | sans fil | 0.12.0-rc.6 | marche, ancien contrôleur, pastille du volume ; MAP rendait l'écran à l'iDrive, il ouvre la navigation d'Android Auto depuis 0.13.0-rc.1, pas encore essayé ([#43](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/43)) |
+| F40 118i de 2019 | `202207190806` | non relevé | USB, sans fil | 0.12.1-rc.4 | marche par câble ; sans-fil très lent avec un Galaxy S25 Ultra ([#71](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/71)) |
+| F45 218i de 2017 | `201907031456` | 1280x480 | USB | 0.12.0 | marche ; pas de guidage au compteur ni à la tête haute : sur les Série F, le compteur n'est pas sur l'Ethernet ([#69](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/69), [#79](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/79)) |
+| F45 225xe | `202402191339` | 1280x480 | sans fil, USB | 0.13.0-rc.1 | marche ; sans-fil lent au bout de quelques minutes, fluide par câble ; glissements tactiles à l'étude ([discussion #30](https://github.com/Jiraiya43/EntryNav2-Android-Auto/discussions/30)) |
+| X1 F48 de 2018 | `202207190806` | 800x480 | sans fil, USB | 0.13.0-rc.3 | marche ; plus de pastille du volume au toucher en 0.13.0-rc.3 ; démarrage sans fil parfois bloqué ([#72](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/72)) |
+| X1 F48 | `201802230007` | 1280x480 | sans fil, USB | 0.12.1-rc.4 | marche ; coupures du sans-fil de temps en temps ; pas de guidage à la tête haute : la navigation BMW de ces voitures passe par D-Bus ([#79](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/79)) |
+| i3 | `202012141616` | 800x480 | USB ; sans fil par un adaptateur Android Auto sur l'USB | 0.13.0-alpha.2 | marche, ancien contrôleur ([#19](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/19)) |
+| MINI Clubman F54 de 2019 | `202111011321` | 1280x480 | sans fil | 0.13.0-rc.2 | marche ; écran rond : marges et toucher justes en 0.13.0-rc.2 ([#78](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/78)) |
+| MINI Clubman F54 de 2023 | `202402191339` | non relevé (8,8 pouces) | USB | non indiquée | marche ; l'écran rond cache la colonne de gauche ([#64](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/64)) |
+| MINI F56 JCW de 2022 | non indiqué | non relevé | non indiquée | 0.13.0-rc.3 | marche, toucher et image justes ; pas de pastille du volume pendant un appel, corrigé en 0.13.0-rc.4 ([#88](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/88)) |
+| MINI F57 de 2018 | `201910092124` | 800x480 | sans fil | 0.12.1-rc.4 | marche ; plus de pastille du volume au toucher en 0.12.1-rc.4 ; l'écran rond cache les côtés ([#56](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/56)) |
+
+Un adaptateur Android Auto sans fil branché sur la prise USB, en [mode USB](USB.md), donne aussi le sans-fil : essayé
+sur l'i3 et sur une autre voiture avec un Galaxy S24 ([discussion #28](https://github.com/Jiraiya43/EntryNav2-Android-Auto/discussions/28)).
 
 Chaque nouvelle voiture s'ajoute ici, avec son rapport de compatibilité ([ticket « Compatibility report »](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/new/choose)).
 
@@ -41,7 +54,7 @@ programmes restent dans `/tmp`, en mémoire.
 | `vmost` | Fonctions de la molette et des touches, chargées à l'exécution | Bloquant |
 | `mic` | Fonctions du micro | Douteux |
 | `video`, `order` | **Démarrage à blanc :** taille de l'écran, emplacement de l'image, superposition des couches | Bloquant |
-| `screen` | Écran d'une autre taille que 1280x480 : accepté, mais jamais essayé en voiture | Douteux |
+| `screen` | Écran d'une autre taille que 1280x480 et 800x480 : accepté, mais jamais essayé en voiture | Douteux |
 | `alps`, `uuid`, `spp` | **Démarrage à blanc :** bibliothèque Bluetooth de même structure, profil reconnu, état lisible | Bloquant ; Bluetooth occupé : douteux |
 | `running` | Android Auto tourne déjà : l'écran et le Bluetooth ne sont pas contrôlés | Information |
 | `hotspot`, `gps` | Wi-Fi de la voiture disponible, GPS de la voiture reconnu | Information |
@@ -74,11 +87,19 @@ téléphone de garder son affichage dans la zone visible, et ne montre que cette
 | Écran | Image demandée au téléphone | Zone montrée | État |
 |---|---|---|---|
 | 1280x480 | 1280x720 | les 480 lignes du haut | essayé en voiture (référence) : rien ne change |
-| 800x480 | 800x480 | tout | essayé en voiture sur une i3 ([#19](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/19)) et une F20 ([#45](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/45)), par câble |
+| 800x480 | 800x480 | tout | essayé en voiture par câble sur une i3 ([#19](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/19)) et une F20 ([#45](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/45)), aussi sans fil sur une X1 F48 ([#72](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/72)) et une MINI F57 ([#56](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/56)) |
 | jusqu'à 1920x1080 | 1920x1080 | la zone de l'écran, en haut à gauche | testé sur PC, jamais essayé |
 
 La ligne `@ok|video|` du contrôle donne la taille lue. Un écran plus grand que 1920x1080 est refusé. En 800x480,
-l'image et le menu de l'appli iDrive ont été vus en voiture, pas encore la pastille du volume ({iss(45)}).
+l'image, le menu de l'appli iDrive et la pastille du volume ont été vus en voiture.
+
+### Écran rond des MINI
+
+Sur une MINI, la marque est lue dans le codage de l'iDrive et annoncée au téléphone. Le contour rond de l'écran cache
+ses côtés : le service demande au téléphone de garder ses boutons à 40 colonnes des bords sur un écran de 1280 de large,
+à 25 sur 800. Son affichage et son toucher commencent après la marge de gauche. Marges et toucher vus justes en voiture sur une
+F54 ([#78](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/78)) et une F56
+([#88](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/88)) ; sur 800 de large, pas encore confirmé.
 
 ## Une autre version de la bibliothèque Bluetooth
 

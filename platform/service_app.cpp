@@ -187,7 +187,7 @@ void ServiceApp::volumeEvent(unsigned steps, void* user) {
 }
 
 // Volume level from the car (vMOST thread): the pill over Android Auto, which stays opaque. Only a change, or a level
-// right after a volume key, shows; another source's level never does (volume_state.hpp).
+// right after a volume key, shows; another source's level only during a call, as the call's volume (volume_state.hpp).
 void ServiceApp::volumeLevel(const VolumeLevel& level, void* user) {
     ServiceApp* a = static_cast<ServiceApp*>(user);
     pthread_mutex_lock(&a->mu);
@@ -345,6 +345,7 @@ void ServiceApp::command(const ControlCommand& c, void* user) {
         a->parkAssist = owns;
     } else if (c.verb == "call") {  // iDrive app (CDS communication.callStatus): phone keys go to iDrive's call screen
         a->inCall = c.arg != 0;
+        a->volume.call(a->inCall);  // during a call the pill shows the call's volume (volume_state.hpp)
         if (a->knob) {
             a->knob->setPhoneToIdrive(c.arg != 0);
         }

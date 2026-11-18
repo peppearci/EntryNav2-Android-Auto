@@ -9,7 +9,13 @@
 //    (CHmiVolumeIndicatorService::copyVolumeIndicatorValuesToStruct, index 0 for this unit's role).
 //  - iDrive keeps that record in one of two slots by its minimum: 0, the volume the knob turns; above 0, another
 //    source's (seen on a MINI F57 at connection: 25 between 25 and 100, ten times in four seconds, while the knob's
-//    volume was 3 between 0 and 100). Only the first slot is the knob's: the other one never shows the pill.
+//    volume was 3 between 0 and 100). Outside a call only the first slot is the knob's: the other one never shows
+//    the pill.
+//  - During a call the knob and the steering wheel buttons move the second slot, the call's volume, which iDrive
+//    shows then (CHmiVolumeIndicatorService: "INT Value"). Seen on a MINI F56 (#88): 53 between 25 and 100 a quarter
+//    of a second after the call started, with no key, then one level per step of either control, and no level of
+//    the first slot until the call ended. So during a call that slot shows, like the knob's outside one; its first
+//    level of the call, which comes by itself, does not.
 //  - The same level comes again without anything changing; iDrive's bar opens on a change or a volume key, so does
 //    the pill.
 //  - Mute is iDrive's own: pressing the audio knob (CECenterStack 0x15.0C fkt 0xC04 PushButtonAudio, value 1) toggles
@@ -38,12 +44,15 @@ public:
         VolumeLevel level;
     };
 
-    VolumeState() : known_(false), muted_(false), keyAt_(0) { level_.value = level_.min = level_.max = 0; }
+    VolumeState() : known_(false), muted_(false), inCall_(false), callKnown_(false), keyAt_(0) {
+        level_.value = level_.min = level_.max = 0;
+        callLevel_ = level_;
+    }
 
-    // A level of the front display. A level of another source (minimum above 0) is not the knob's.
+    // A level of the front display. Outside a call, a level of another source (minimum above 0) is not the knob's.
     Shown level(const VolumeLevel& reported, uint32_t now) {
         if (reported.min != 0) {
-            return none();
+            return inCall_ ? callLevel(reported, now) : none();
         }
         const bool changed = !known_ || reported.value != level_.value || reported.max != level_.max;
         level_ = reported;
@@ -65,10 +74,33 @@ public:
         return known_ ? shown() : none();
     }
 
+    // A call starts or ends (iDrive's callStatus): the call's volume shows only during one.
+    void call(bool on) {
+        if (on != inCall_) {
+            callKnown_ = false;
+        }
+        inCall_ = on;
+    }
+
     bool known() const { return known_; }
     bool muted() const { return muted_; }
 
 private:
+    // The call's volume: shown on a change or after a key, as the knob's. The audio knob's mute is not applied to it:
+    // never seen during a call.
+    Shown callLevel(const VolumeLevel& reported, uint32_t now) {
+        const bool changed = callKnown_ && (reported.value != callLevel_.value || reported.min != callLevel_.min ||
+                                            reported.max != callLevel_.max);
+        callLevel_ = reported;
+        callKnown_ = true;
+        if (!changed && !recentKey(now)) {
+            return none();
+        }
+        Shown s;
+        s.show = true;
+        s.level = callLevel_;
+        return s;
+    }
     static uint32_t nz(uint32_t t) { return t ? t : 1; }                                   // 0 means "no key yet"
     bool recentKey(uint32_t now) const { return keyAt_ && now - keyAt_ <= kKeyWindowMs; }  // wraps with the clock
     static Shown none() {
@@ -87,8 +119,8 @@ private:
         return s;
     }
 
-    VolumeLevel level_;
-    bool known_, muted_;
+    VolumeLevel level_, callLevel_;
+    bool known_, muted_, inCall_, callKnown_;
     uint32_t keyAt_;
 };
 

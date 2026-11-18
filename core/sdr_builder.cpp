@@ -225,9 +225,10 @@ bool tuneMainDisplay(std::vector<uint8_t>& sdr, const DisplayPlan& display) {
         },
         changed);
     if (ok && changed) {
-        printf("[SDR] main VideoConfig: canvas %ux%u for a %ux%u panel, dpi=%u insets=(0,%u,0,%u)\n",
+        // The margins as sent (top, bottom, left, right): the left one is the MINI's surround.
+        printf("[SDR] main VideoConfig: canvas %ux%u for a %ux%u panel, dpi=%u insets=(0,%u,%u,%u)\n",
                display.canvasWidth, display.canvasHeight, display.width, display.height, kDensity,
-               display.bottomInset(), display.rightInset());
+               display.bottomInset(), display.leftInset(), display.rightInset());
     }
     return ok && changed;
 }

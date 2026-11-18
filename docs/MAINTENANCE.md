@@ -10,7 +10,7 @@ Le service ne lit aucun réglage dans son environnement : ses valeurs sont fixes
 
 | Fichier | Effet |
 |---|---|
-| `vehicle` | Modèle et année annoncés au téléphone : `model=…` et `year=…`, une ligne chacun. Sans ce fichier : « iDrive », 2019 |
+| `vehicle` | Modèle et année annoncés au téléphone : `model=…` et `year=…`, une ligne chacun. Sans ce fichier : « iDrive », 2019. La marque (BMW ou MINI) vient du codage de l'iDrive |
 | `usb` | Présent : Android Auto par câble USB au lieu du sans-fil (case *Câble USB au lieu du sans-fil* du menu). Vide, ou le nom de la seule prise à surveiller : voir [USB](USB.md) |
 | `wifi-channel` | Un canal de 1 à 11 (`echo 1 > /var/local/data/AA/wifi-channel`) : au démarrage du service, le Wi-Fi de la voiture passe sur ce canal (hostapd `chan_switch`). Utile quand un voisin sur le canal 11 ou 10 coupe le téléphone par moments. Absent : le canal de la voiture ne change pas. Revient à celui de BMW au redémarrage de l'unité |
 | `autostart` | Présent : Android Auto démarre avec l'iDrive (case *Démarrage automatique* du menu) |

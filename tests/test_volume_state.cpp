@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Jiraiya43
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
-// What the volume pill shows: the knob's level on a change or after a key, never another source's, and mute.
+// What the volume pill shows: the knob's level on a change or after a key, another source's only as the call's volume
+// during a call, and mute.
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -58,12 +59,41 @@ void atClock(uint32_t t) {
     CHECK(shows(fresh.level(level(8, 0, 40), t + 100), 0, 0, 40));
 }
 
+// A call on the MINI F56 of #88 (service log): the knob's volume at 33, then the call's volume between 25 and 100.
+void duringCall(uint32_t t) {
+    evo::VolumeState v;
+    CHECK(shows(v.level(level(33, 0, 100), t), 33, 0, 100));
+    // The call starts: its volume comes by itself and does not show; the knob and the wheel then move it.
+    v.call(true);
+    CHECK(!v.level(level(53, 25, 100), t + 250).show);
+    v.volumeKey(t + 3500);
+    CHECK(shows(v.level(level(55, 25, 100), t + 3500), 55, 25, 100));
+    v.volumeKey(t + 3600);
+    CHECK(shows(v.level(level(57, 25, 100), t + 3600), 57, 25, 100));
+    // The same level again, no key: nothing; a change without a key shows.
+    CHECK(!v.level(level(57, 25, 100), t + 3600 + evo::VolumeState::kKeyWindowMs + 1).show);
+    CHECK(shows(v.level(level(53, 25, 100), t + 9000), 53, 25, 100));
+    // The call ends: the call's volume never shows again, the knob's comes back as before.
+    v.call(false);
+    v.volumeKey(t + 10000);
+    CHECK(!v.level(level(55, 25, 100), t + 10000).show);
+    CHECK(shows(v.level(level(35, 0, 100), t + 10100), 35, 0, 100));
+    // Next call: its first level, the same as the last one, still does not show by itself.
+    v.call(true);
+    CHECK(!v.level(level(55, 25, 100), t + 20000).show);
+    v.volumeKey(t + 21000);
+    CHECK(shows(v.level(level(57, 25, 100), t + 21000), 57, 25, 100));
+}
+
 }  // namespace
 
 int main() {
     atClock(1000);
     atClock(0xFFFFF000u);  // across the 32-bit wrap of the millisecond clock
     atClock(0);            // a key at time 0 still counts
+    duringCall(1000);
+    duringCall(0xFFFFF000u);
     puts("PASS volume state: another source's level ignored, repeats held back, keys, mute by the audio knob");
+    puts("PASS volume state: during a call, the call's volume shows after a key or on a change (#88)");
     return 0;
 }

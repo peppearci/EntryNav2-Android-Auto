@@ -39,7 +39,7 @@ English · [Français](README.fr.md)
 |---|---|
 | Latest release | [0.12.0](https://github.com/Jiraiya43/EntryNav2-Android-Auto/releases/latest), tried in a car (pre-1.0: expect rough edges) |
 | Tried in a car | the reference car, a 2019 BMW G20 (iDrive software `202111011321`) |
-| Other cars | reported working by their owners: G20, G21, X3 G01, F30, F45, F20, i3 ([list](docs/COMPATIBILITE.md#voitures-essayées)); a compatibility check is built in |
+| Other cars | reported working by their owners: G20, G21, X3 G01, F20, F21, F30, F40, F45, X1 F48, i3, MINI F54, F56, F57 ([list](docs/COMPATIBILITE.md#voitures-essayées)); a compatibility check is built in |
 
 Every change is tested on a PC, and the ARM programs run under QEMU against the car's own libraries. Only a car test
 counts as proof: [CHANGELOG.md](CHANGELOG.md) says for each version whether it was tried in a car or only tested on a PC.

@@ -440,8 +440,8 @@ int compatReport() {
     } else {
         const bool target = ilm.validateTarget(surface, layer, display.width, display.height);
         compatLine(target ? "ok" : "block", "video", target ? panel : panel + ": layer or surface");
-        if (target && !display.reference()) {
-            compatLine("warn", "screen", panel + ": only 1280x480 has been tried in a car");
+        if (target && !display.triedInCar()) {
+            compatLine("warn", "screen", panel + ": only 1280x480 and 800x480 have been tried in a car");
         }
     }
     bool topFirst = false;

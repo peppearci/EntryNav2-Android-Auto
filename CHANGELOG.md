@@ -8,6 +8,23 @@ QEMU avec les bibliothèques de la voiture).
 
 ## [Non publié]
 
+## [0.13.0-rc.4] - 2026-11-18 · PC
+
+Version candidate : pastille du volume pendant un appel, contrôle de compatibilité à jour pour les écrans 800x480.
+Testée sur PC et sous QEMU, **pas encore essayée en voiture** ; hors appel, rien ne change à l'écran.
+
+### Corrigé
+
+- Journal du service : la ligne `[SDR] main VideoConfig` affichait toujours 0 pour la marge gauche ; elle donne
+  maintenant celle envoyée au téléphone (40 sur une MINI). Le téléphone recevait déjà la bonne valeur.
+- Contrôle de compatibilité : un écran 800x480 n'est plus signalé `@warn|screen|` comme jamais essayé en voiture. Il a
+  marché sur une i3, une F20, une X1 F48 et une MINI F57 ; l'avertissement reste pour les autres tailles.
+- Pastille du volume pendant un appel : elle ne s'affichait pas. Pendant un appel, la molette et les touches du volant
+  règlent le volume de l'appel, que l'iDrive donne sur une autre échelle (de 25 à 100 sur une MINI F56), et le service
+  l'ignorait. Il le montre désormais après une touche ou à un changement, jamais à la seule arrivée de l'appel
+  ([#88](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/88)). Testé sur PC à partir du journal de cette
+  voiture, pas encore essayé en voiture.
+
 ## [0.13.0-rc.3] - 2026-11-16 · PC
 
 Version candidate : Android Auto en retrait pendant l'aide au stationnement ouverte par son bouton. Testée sur PC et
@@ -354,7 +371,8 @@ Première version publique. Essayée sur une BMW G20 de 2019, logiciel iDrive `2
   encore suivie sur une voiture.
 - Voir les [limites connues](ROADMAP.md#limites-connues).
 
-[Non publié]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/compare/v0.13.0-rc.3...HEAD
+[Non publié]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/compare/v0.13.0-rc.4...HEAD
+[0.13.0-rc.4]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/releases/tag/v0.13.0-rc.4
 [0.13.0-rc.3]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/releases/tag/v0.13.0-rc.3
 [0.13.0-rc.2]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/releases/tag/v0.13.0-rc.2
 [0.13.0-rc.1]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/releases/tag/v0.13.0-rc.1
