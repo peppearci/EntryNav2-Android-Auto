@@ -29,6 +29,8 @@ constexpr char kVehicle[] = "/var/local/data/AA/vehicle";             // model=.
 constexpr char kKombiSingle[] = "/var/local/data/AA/kombi-single-maneuver";
 // Present: Android Auto over a USB cable instead of wireless. Empty, or the one USB port to use ("1-1").
 constexpr char kUsb[] = "/var/local/data/AA/usb";
+// Present with a channel from 1 to 11: the service moves the car's Wi-Fi there (a neighbour on channel 10 stalled the phone).
+constexpr char kWifiChannel[] = "/var/local/data/AA/wifi-channel";
 constexpr char kAppLog[] = "/var/local/data/AA/app.log";
 constexpr char kAppLogOld[] = "/var/local/data/AA/app.old.log";
 // shortcut: kept on flash (maintenance profile only) so a drive without a PC leaves a log; 4 MB, then .old, upgrade if wear matters

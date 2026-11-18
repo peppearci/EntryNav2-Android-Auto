@@ -172,6 +172,8 @@ test-host: test-parsers test-spp-host test-kombi-host test-gps-host test-capture
 	./tests/test-spawn-attr
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_popup_peek.cpp -o tests/test-popup-peek
 	./tests/test-popup-peek
+	$(HOST_CXX) $(HOST_FLAGS) tests/test_wifi_channel.cpp -o tests/test-wifi-channel
+	./tests/test-wifi-channel
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_hold_machine.cpp hmiapp/hold_machine.cpp -o tests/test-hold-machine
 	./tests/test-hold-machine
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_pending_restart.cpp -o tests/test-pending-restart

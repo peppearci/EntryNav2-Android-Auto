@@ -33,6 +33,9 @@
 #include <cstring>
 #include <unistd.h>
 #include <cerrno>
+#include <fstream>
+#include <iterator>
+#include <string>
 // clang-format on
 
 namespace {
@@ -288,6 +291,13 @@ int main(int argc, char** argv) {
         if (!evo::loadAccessPoint(app.ap, source)) {
             ELOG("Main", "car hotspot (wlan0) or its credentials unavailable");
             return 1;
+        }
+        std::ifstream channelFile(evo::contract::kWifiChannel);
+        std::string channelText((std::istreambuf_iterator<char>(channelFile)), std::istreambuf_iterator<char>());
+        const int channel = evo::parseWifiChannel(channelText);
+        if (channel) {
+            ELOG("Main", "Wi-Fi channel %d asked in %s: %s", channel, evo::contract::kWifiChannel,
+                 evo::setAccessPointChannel(channel) ? "switched" : "hostapd refused");
         }
         app.server.setHotspotAddress(app.ap.ip);  // listening address and the subnet a phone must come from
         if (logsKept) {
