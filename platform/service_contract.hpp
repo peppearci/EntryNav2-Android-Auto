@@ -31,6 +31,9 @@ constexpr char kKombiSingle[] = "/var/local/data/AA/kombi-single-maneuver";
 constexpr char kUsb[] = "/var/local/data/AA/usb";
 constexpr char kAppLog[] = "/var/local/data/AA/app.log";
 constexpr char kAppLogOld[] = "/var/local/data/AA/app.old.log";
+// shortcut: kept on flash (maintenance profile only) so a drive without a PC leaves a log; 4 MB, then .old, upgrade if wear matters
+constexpr char kServiceLog[] = "/var/local/data/AA/service.log";
+constexpr char kServiceLogOld[] = "/var/local/data/AA/service.old.log";
 constexpr char kAppDisable[] = "/var/local/data/AA/app.disable";  // present: the app stays off (set by hand)
 constexpr char kAppGuard[] = "/var/local/data/AA/app-guard";   // crash guard: 3 short iDrive runs and the app stays off
 constexpr char kBootGuard[] = "/var/local/data/AA/bootguard";  // automatic starts within 15 minutes
@@ -38,7 +41,6 @@ constexpr char kBootGuard[] = "/var/local/data/AA/bootguard";  // automatic star
 // ---- run time, in /tmp (memory, gone at the next start) -----------------------------------------------------------
 constexpr char kServiceDir[] = "/tmp/entry-aa-service";
 constexpr char kServiceStop[] = "/tmp/entry-aa-service/STOP";  // created by the app: the supervisor stops
-constexpr char kServiceLog[] = "/tmp/entry-aa-service.log";
 constexpr char kStateFile[] = "/tmp/entry-aad-state";             // "state pid overlay", written by the service
 constexpr char kAppKeyFile[] = "/tmp/entry-aad-appkey";           // NAV/MEDIA/COM/BACK kept Android Auto up
 constexpr char kDayNightFile[] = "/tmp/entry-aad-daynight";       // day or night, written by the app

@@ -72,12 +72,12 @@ touch /var/local/data/AA/maintenance
 | Journal | Emplacement | Taille |
 |---|---|---|
 | Appli de l'iDrive | `/var/local/data/AA/app.log`, et `app.old.log` après rotation | 512 Ko au plus |
-| Service Android Auto | `/tmp/entry-aa-service.log` | en mémoire, perdu au redémarrage |
+| Service Android Auto | `/var/local/data/AA/service.log`, et `service.old.log` après rotation | 4 Mo au plus avant rotation (fork F48) |
 
 Depuis le PC :
 
 ```sh
-scp root@169.254.1.0:/var/local/data/AA/app.log root@169.254.1.0:/tmp/entry-aa-service.log .
+scp root@169.254.1.0:/var/local/data/AA/app.log root@169.254.1.0:/var/local/data/AA/service.log .
 ```
 
 ### Qualité du Wi-Fi
@@ -108,7 +108,7 @@ pas de ligne `[WifiLink]`.
 Pour revenir à zéro journal :
 
 ```sh
-rm -f /var/local/data/AA/maintenance /var/local/data/AA/app.log /var/local/data/AA/app.old.log /tmp/entry-aa-service.log
+rm -f /var/local/data/AA/maintenance /var/local/data/AA/app.log /var/local/data/AA/app.old.log /var/local/data/AA/service.log /var/local/data/AA/service.old.log
 ```
 
 ## Garde-fou

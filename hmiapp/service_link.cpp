@@ -102,6 +102,10 @@ void launchService() {
 
     char* argv[] = {const_cast<char*>(contract::kSupervisor), const_cast<char*>("--service"), nullptr};
     int in = open("/dev/null", O_RDONLY | O_CLOEXEC);
+    struct stat logStat;
+    if (stat(contract::kServiceLog, &logStat) == 0 && logStat.st_size > 4 * 1024 * 1024) {
+        rename(contract::kServiceLog, contract::kServiceLogOld);
+    }
     int out = open(serviceLogPath(contract::kMaintenance, contract::kServiceLog),
                    O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC, 0644);
     if (in < 0 || out < 0) {
