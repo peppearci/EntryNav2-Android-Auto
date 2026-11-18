@@ -1003,15 +1003,15 @@ std::string quietPhone() {
     Phone phone(link.phoneFd, log);
     phone.handshake();
     phone.discover();
-    const int answered = phone.headUnitPings(8000, true);  // without pings, the session would end after 5 s
+    const int answered = phone.headUnitPings(12000, true);  // without pings, the session would end after 10 s
     if (!link.session.isActive() || phone.lost() || answered < 3) {
-        return format("answering phone: session active=%d, %d pings in 8 s", link.session.isActive() ? 1 : 0, answered);
+        return format("answering phone: session active=%d, %d pings in 12 s", link.session.isActive() ? 1 : 0, answered);
     }
     const long long since = monotonicMs();
-    const int ignored = phone.headUnitPings(9000, false);
+    const int ignored = phone.headUnitPings(12000, false);
     const long long lasted = monotonicMs() - since;
     // The last answer came up to 2 s before; the silence is checked about once a second.
-    if (!phone.lost() || !waitEnded(link.session) || ignored < 2 || lasted < 2500 || lasted > 7500) {
+    if (!phone.lost() || !waitEnded(link.session) || ignored < 2 || lasted < 6000 || lasted > 11000) {
         return format("silent phone: closed=%d, %d pings, ended after %lld ms", phone.lost() ? 1 : 0, ignored, lasted);
     }
     return std::string();
