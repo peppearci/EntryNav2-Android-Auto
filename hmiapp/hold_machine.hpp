@@ -104,6 +104,7 @@ public:
     // ---- the car (CDS properties) ----
     void callChanged(bool inCall, long now);  // after each update of either phone line
     void gearChanged(int gear);
+    void screenChanged(int visibleContext);  // the iDrive screen shown, for the log line when Android Auto steps aside
     void pdcChanged(int status);      // sensors.PDCStatus
     void driveModeChanged(long now);  // a real change between two valid driving modes
 
@@ -179,6 +180,7 @@ private:
     bool inCall_;
     long callEnd_;  // when the last call ended, 0: handled
     int gear_;
+    int screen_;  // last visibleContext reported by CDS, -1000 before the first
     int pdc_;             // sensors.PDCStatus, kPdcUnknown before the first value
     bool parkDismissed_;  // the driver chose Android Auto during this park assist
     long driveModeAt_;    // last driving mode change, 0: none

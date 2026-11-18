@@ -77,6 +77,7 @@ bool onScreenChanged(void*, const bmw::BasicString<unsigned short>& value) {
     const int screen = aa::cdsIntField(text, "visibleContext", -1);
     if (screen != g_lastScreen) {
         g_lastScreen = screen;
+        g_hold->screenChanged(screen);
         alog("CDS %s = '%s'", kScreenProperty, text);
     }
     return true;

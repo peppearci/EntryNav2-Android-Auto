@@ -12,6 +12,10 @@
 namespace evo {
 namespace app {
 
+void HoldMachine::screenChanged(int visibleContext) {
+    screen_ = visibleContext;
+}
+
 HoldMachine::HoldMachine(HoldIo& io)
     : io_(io),
       menuFocused_(false),
@@ -40,6 +44,7 @@ HoldMachine::HoldMachine(HoldIo& io)
       inCall_(false),
       callEnd_(0),
       gear_(kGearUnknown),
+      screen_(-1000),
       pdc_(kPdcUnknown),
       parkDismissed_(false),
       driveModeAt_(0),
@@ -410,8 +415,8 @@ void HoldMachine::poll(const ServiceState& service, long now) {
             io_.triggerEvent(kEvGoHome);
             say("hold: Android Auto stepped aside: event %u -> iDrive main menu", kEvGoHome);
         } else {
-            say("hold: Android Auto stepped aside (state %u visible %d, hard key %d, gear %d)", kAaState,
-                static_cast<int>(aaVisible_), static_cast<int>(hideSent_), gear_);
+            say("hold: Android Auto stepped aside (state %u visible %d, hard key %d, gear %d, last iDrive screen %d)",
+                kAaState, static_cast<int>(aaVisible_), static_cast<int>(hideSent_), gear_, screen_);
         }
         holding_ = false;
         unheld_ = false;

@@ -508,7 +508,7 @@ void reverseGear() {
         c.overlay(0);
         c.poll();
         CHECK_OUT(c, "");  // neither the menu nor the main menu over the camera
-        CHECK(c.logged("stepped aside (state 13 visible 1, hard key 0, gear 2)"));
+        CHECK(c.logged("stepped aside (state 13 visible 1, hard key 0, gear 2, last iDrive screen -1000)"));
         CHECK(!c.hold.holding());
         c.blankVisible(true);  // iDrive back on the blank state while in reverse: no show
         CHECK_OUT(c, "");
@@ -735,7 +735,7 @@ void hardKeys() {
         c.overlay(0);
         c.poll();
         CHECK_OUT(c, "");  // iDrive already went elsewhere: no main menu
-        CHECK(c.logged("stepped aside (state 13 visible 0, hard key 1, gear 1)"));
+        CHECK(c.logged("stepped aside (state 13 visible 0, hard key 1, gear 1, last iDrive screen -1000)"));
     }
     {  // two sightings more than 3 s apart start over
         Car c;
