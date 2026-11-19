@@ -8,6 +8,11 @@ QEMU avec les bibliothèques de la voiture).
 
 ## [Non publié]
 
+### Modifié
+
+- Réception Android Auto : réutilise les tampons pendant chaque connexion, sans changer les limites du protocole.
+  Les tampons de messages assemblés de plus de 1 Mio sont libérés après usage. Testé sur PC.
+
 ## [0.13.0-rc.5] - 2026-11-19 · PC
 
 Version candidate : pas d'écran noir au changement de mode de conduite quand l'iDrive n'en affiche pas la fenêtre,

@@ -112,7 +112,7 @@ private:
     bool sendPlain(uint8_t channel, const Message& message);
     bool sendSealed(uint8_t channel, const Message& message, uint8_t flags = frame::kSealed);
     bool askPhone(uint64_t silentMs);  // our own ping to a silent phone; false: not possible yet
-    Received receive(uint8_t& channel, Message& message);
+    Received receive(uint8_t& channel, Message& wire, Message& plain, Message& message);
 
     // Car input (aa_session.cpp).
     void sendCarInput();

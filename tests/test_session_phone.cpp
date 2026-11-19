@@ -8,6 +8,9 @@
 // and the head unit's clock (input and microphone timestamps); nothing else varies.
 //   test-session-phone <golden>            compare (tests/fixtures/session_phone.golden)
 //   test-session-phone --write <golden>    write the golden from the current code
+//   test-session-phone --reconnect-soak <cycles>    sample RSS after each joined session
+//   Build with -DENTRY_AAD_MASSIF and run under Massif to save a heap snapshot per cycle instead.
+//   test-session-phone --video-profile <frames>    stream a fixed mix on one connection
 #include <fcntl.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
@@ -27,6 +30,10 @@
 #include <initializer_list>
 #include <string>
 #include <vector>
+
+#ifdef ENTRY_AAD_MASSIF
+#include <valgrind/valgrind.h>
+#endif
 
 #include "aa_session.hpp"
 
@@ -1100,6 +1107,166 @@ const Scenario kScenarios[] = {{"full session", fullSession},
                                {"cut headers", cutHeaders},
                                {"lifecycle", lifecycle}};
 
+bool reconnectOnce(aa::AASession& session) {
+    int fds[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) != 0) {
+        perror("soak socketpair");
+        return false;
+    }
+    if (!session.start(fds[0])) {
+        close(fds[1]);
+        return false;
+    }
+    bool exchanged = false;
+    {
+        std::vector<std::string> log;
+        Phone phone(fds[1], log);
+        phone.handshake();
+        phone.discover();
+        phone.send(6, kSealed, bytes({0x80, 0x00}));
+        phone.send(6, kSealed, bytes({0x80, 0x01, 0x08, 0x03}));
+        const Bytes chunk(8192, 0x65);
+        const Bytes first = bytes({0x00, 0x00, 0, 0, 0, 0, 0, 0, 0, 42}) + chunk;
+        phone.piece(6, 0x09, first, static_cast<uint32_t>(first.size() + 2 * chunk.size()));
+        phone.piece(6, 0x08, chunk);
+        phone.piece(6, 0x0a, chunk);
+        phone.settle();
+        exchanged = !phone.lost();
+        phone.leave();
+        exchanged = exchanged && !log.empty() && log.back() == "hu <closed>";
+    }
+    const bool ended = waitEnded(session);
+    session.stop();
+    close(fds[1]);
+    unsigned video = 0;
+    const auto events = takeEvents();
+    for (const auto& line : events) {
+        if (line.compare(0, 12, "video frame=") == 0) {
+            ++video;
+        }
+    }
+    return exchanged && ended && video == 1;
+}
+
+bool reconnectSoak(int console, long cycles) {
+    aa::AASession session;
+    watch(session, true);
+#ifdef ENTRY_AAD_MASSIF
+    (void)console;
+    if (!RUNNING_ON_VALGRIND) {
+        fprintf(stderr, "FAIL soak: this binary must run under Valgrind Massif\n");
+        return false;
+    }
+#else
+    if (dprintf(console, "cycle,rss_kib\n") < 0) {
+        return false;
+    }
+#endif
+    for (long cycle = 1; cycle <= cycles; ++cycle) {
+        if (!reconnectOnce(session)) {
+            fprintf(stderr, "FAIL soak: reconnect cycle %ld did not complete\n", cycle);
+            return false;
+        }
+#ifdef ENTRY_AAD_MASSIF
+        char command[64];
+        snprintf(command, sizeof(command), "snapshot massif-cycle-%05ld.out", cycle);
+        if (VALGRIND_MONITOR_COMMAND(command) != 0) {
+            fprintf(stderr, "FAIL soak: Massif snapshot command was rejected\n");
+            return false;
+        }
+#else
+        FILE* smaps = fopen("/proc/self/smaps_rollup", "r");
+        if (!smaps) {
+            perror("soak smaps_rollup");
+            return false;
+        }
+        char line[256];
+        unsigned long rss = 0;
+        bool found = false;
+        while (!found && fgets(line, sizeof(line), smaps)) {
+            found = sscanf(line, "Rss: %lu kB", &rss) == 1;
+        }
+        fclose(smaps);
+        if (!found || dprintf(console, "%ld,%lu\n", cycle, rss) < 0) {
+            fprintf(stderr, "FAIL soak: could not report RSS at cycle %ld\n", cycle);
+            return false;
+        }
+#endif
+    }
+    fprintf(stderr, "PASS reconnect soak: %ld sessions on one AASession\n", cycles);
+    return true;
+}
+
+struct StreamFrames {
+    size_t received = 0;
+    bool valid = true;
+};
+
+void checkStreamFrame(uint32_t, const uint8_t* data, size_t len, uint64_t pts, void* user) {
+    auto& frames = *static_cast<StreamFrames*>(user);
+    frames.valid = frames.valid && len == pts && len != 0 && data[0] == 0x65 && data[len - 1] == 0x65;
+    ++frames.received;
+}
+
+void streamFrame(Phone& phone, size_t size, bool fragmented, const Bytes& chunk) {
+    const Bytes header =
+        bytes({0, 0, 0, 0, 0, 0, static_cast<int>((size >> 24) & 0xff), static_cast<int>((size >> 16) & 0xff),
+               static_cast<int>((size >> 8) & 0xff), static_cast<int>(size & 0xff)});
+    if (!fragmented) {
+        phone.send(6, kSealed, header + chunk);
+        return;
+    }
+    phone.piece(6, 0x09, header + chunk, static_cast<uint32_t>(header.size() + size));
+    for (size_t left = size - chunk.size(); left > chunk.size(); left -= chunk.size()) {
+        phone.piece(6, 0x08, chunk);
+    }
+    phone.piece(6, 0x0a, chunk);
+}
+
+bool streamVideo(long count, bool oversizedCase) {
+    StreamFrames frames;
+    aa::AASession session;
+    watch(session, true);
+    session.setVideoFrameCallback(checkStreamFrame, &frames);
+    int fds[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) != 0) {
+        perror("video profile socketpair");
+        return false;
+    }
+    if (!session.start(fds[0])) {
+        close(fds[1]);
+        return false;
+    }
+    std::vector<std::string> log;
+    Phone phone(fds[1], log);
+    phone.handshake();
+    phone.discover();
+    phone.send(6, kSealed, bytes({0x80, 0x00}));
+    phone.send(6, kSealed, bytes({0x80, 0x01, 0x08, 0x03}));
+    phone.settle();
+    phone.setQuiet(true);
+    const Bytes chunk(8192, 0x65);
+    for (long i = 0; i < count && !phone.lost(); ++i) {
+        const bool fragmented = i % 4 == 0;
+        const size_t size = fragmented ? (oversizedCase ? 129 : 3) * chunk.size() : chunk.size();
+        streamFrame(phone, size, fragmented, chunk);
+        if (oversizedCase && i == 0) {
+            phone.piece(6, 0x09, chunk, 3 * chunk.size());
+            phone.piece(6, 0x0a, chunk);  // Too short: the announced size is larger than these two TLS records.
+        }
+        phone.settle();
+        log.clear();
+    }
+    const bool exchanged = !phone.lost();
+    phone.leave();
+    const bool ended = waitEnded(session);
+    session.stop();
+    close(fds[1]);
+    takeEvents();
+    return exchanged && !log.empty() && log.back() == "hu <closed>" && ended && frames.valid &&
+           frames.received == static_cast<size_t>(count);
+}
+
 void timedOut(int) {
     static const char msg[] = "FAIL test-session-phone: no progress\n";
     ssize_t w = write(2, msg, sizeof(msg) - 1);
@@ -1143,12 +1310,23 @@ bool readLines(const char* path, std::vector<std::string>& lines) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    const bool soak = argc > 1 && !strcmp(argv[1], "--reconnect-soak");
+    const bool profile = argc > 1 && !strcmp(argv[1], "--video-profile");
+    long cycles = 0;
+    if (soak || profile) {
+        char* end = nullptr;
+        cycles = argc == 3 ? strtol(argv[2], &end, 10) : 0;
+        if (cycles < 1 || cycles > 10000 || *end) {
+            fprintf(stderr, "usage: test-session-phone %s <1..10000>\n", argv[1]);
+            return 2;
+        }
+    }
     const bool writing = argc == 3 && !strcmp(argv[1], "--write");
     const char* golden = writing ? argv[2] : (argc == 2 ? argv[1] : "tests/fixtures/session_phone.golden");
     signal(SIGPIPE, SIG_IGN);
     signal(SIGALRM, timedOut);
     writeVehicleFile();
-    alarm(300);
+    alarm(soak || profile ? 300 + static_cast<unsigned>(cycles) : 300);
     SSL_library_init();
     SSL_load_error_strings();
     // The session's own log would bury the verdict: it goes to /dev/null while the scenarios run.
@@ -1157,6 +1335,16 @@ int main(int argc, char** argv) {
     const int sink = open("/dev/null", O_WRONLY);
     if (console < 0 || sink < 0 || dup2(sink, 1) < 0) {
         return 1;
+    }
+    if (soak || profile) {
+        const bool ok = soak ? reconnectSoak(console, cycles) : streamVideo(cycles, false);
+        if (profile) {
+            fprintf(stderr, "%s video profile: %ld frames\n", ok ? "PASS" : "FAIL", cycles);
+        }
+        close(console);
+        close(sink);
+        unlink(g_vehicleFile);
+        return ok ? 0 : 1;
     }
     std::vector<std::string> out;
     for (size_t i = 0; i < sizeof(kScenarios) / sizeof(kScenarios[0]); ++i) {
@@ -1173,6 +1361,7 @@ int main(int argc, char** argv) {
     takeEvents();
     const std::string keyframe = writing ? std::string() : keyframeAfterLoss();
     takeEvents();
+    const bool oversized = writing || streamVideo(2, true);
     fflush(stdout);
     dup2(console, 1);
     close(sink);
@@ -1222,5 +1411,10 @@ int main(int argc, char** argv) {
         return 1;
     }
     puts("PASS session, keyframe after a lost frame: focus off and on, not in the first 5 s, once in 10 s");
+    if (!oversized) {
+        fprintf(stderr, "FAIL session, oversized fragmented video followed by small video\n");
+        return 1;
+    }
+    puts("PASS session, oversized fragmented video followed by small video");
     return 0;
 }

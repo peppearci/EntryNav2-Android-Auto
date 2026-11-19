@@ -267,14 +267,17 @@ void AASession::run() {
         finish();
         return;
     }
+    Message wire, plain, message;
+    const size_t kMaxRetainedMessage = 1u << 20;
     while (running()) {
         uint8_t channel = 0;
-        Message message;
-        const Received received = receive(channel, message);
-        if (received == kLost) {
-            break;
+        const Received received = receive(channel, wire, plain, message);
+        const bool keepRunning = received != kMessage || dispatch(channel, message);
+        // A large fragmented message may be valid, but need not occupy memory for the rest of the connection.
+        if (message.capacity() > kMaxRetainedMessage) {
+            Message().swap(message);
         }
-        if (received == kMessage && !dispatch(channel, message)) {
+        if (received == kLost || !keepRunning) {
             break;
         }
     }
@@ -411,7 +414,7 @@ bool AASession::askPhone(uint64_t silentMs) {
     return true;
 }
 
-AASession::Received AASession::receive(uint8_t& channel, Message& message) {
+AASession::Received AASession::receive(uint8_t& channel, Message& wire, Message& plain, Message& message) {
     uint8_t raw[frame::kHeaderSize];
     if (!receiveExactly(raw, sizeof(raw))) {
         if (running()) {
@@ -442,28 +445,28 @@ AASession::Received AASession::receive(uint8_t& channel, Message& message) {
     if (header.length == 0) {
         return kNothing;
     }
-    std::vector<uint8_t> payload(header.length);
-    if (!receiveExactly(&payload[0], payload.size())) {
+    wire.resize(header.length);
+    if (!receiveExactly(wire.data(), wire.size())) {
         printf("[AASession] Failed to read payload bytes (%u bytes).\n", header.length);
         return kLost;
     }
     g_trail.stage = kTrailDecrypt;
-    std::vector<uint8_t> plain;
-    if (!header.encrypted()) {
-        plain.swap(payload);
-    } else if (!tls_.open(&payload[0], payload.size(), plain)) {
-        printf("[AASession] Failed to decrypt encrypted frame (%u bytes).\n", header.length);
-        assembler_.drop(channel);
-        if (++unreadableInARow_ >= kUnreadableLimit) {
-            printf("[AASession] %u encrypted frames in a row did not decrypt: the stream is broken, session ends.\n",
-                   unreadableInARow_);
-            return kLost;
+    const bool encrypted = header.encrypted();
+    if (encrypted) {
+        if (!tls_.open(wire.data(), wire.size(), plain)) {
+            printf("[AASession] Failed to decrypt encrypted frame (%u bytes).\n", header.length);
+            assembler_.drop(channel);
+            if (++unreadableInARow_ >= kUnreadableLimit) {
+                printf(
+                    "[AASession] %u encrypted frames in a row did not decrypt: the stream is broken, session ends.\n",
+                    unreadableInARow_);
+                return kLost;
+            }
+            return kNothing;
         }
-        return kNothing;
-    } else {
         unreadableInARow_ = 0;
     }
-    switch (assembler_.add(header, plain, message)) {
+    switch (assembler_.add(header, encrypted ? plain : wire, message)) {
         case MessageAssembler::kComplete:
             break;
         case MessageAssembler::kPending:
