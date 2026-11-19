@@ -8,6 +8,33 @@ QEMU avec les bibliothèques de la voiture).
 
 ## [Non publié]
 
+## [0.13.0-rc.5] - 2026-11-19 · PC
+
+Version candidate : pas d'écran noir au changement de mode de conduite quand l'iDrive n'en affiche pas la fenêtre,
+contrôle de compatibilité juste pour les voitures en USB, lien BMW Apps dans le journal du sans-fil. Testée sur PC et
+sous QEMU, **pas encore essayée en voiture**.
+
+### Ajouté
+
+- Journal du sans-fil : chaque ligne `[WifiLink]` dit si un téléphone tient le lien Bluetooth des BMW Apps (My BMW,
+  AAIdrive, option *Apps* du téléphone dans la voiture), qui passe par la même puce que le Wi-Fi. Avec l'option *Apps*
+  activée, Android Auto sans fil démarrait mal sur une F40
+  ([#71](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/71)) : les journaux diront si ce lien tourne pendant
+  les lenteurs. Lecture seule, journaux activés seulement. Testé sur PC.
+
+### Corrigé
+
+- Contrôle de compatibilité : un point Bluetooth raté (`alps`, `uuid`, `spp`) sortait `@block` comme s'il empêchait
+  toute installation, alors que seul le sans-fil s'en sert. Son détail le dit maintenant (`wireless only`), et avec le
+  fichier `/var/local/data/AA/usb` il sort en `@info`. Une ligne `@info|usb|` montre le mode USB choisi
+  ([#106](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/106) : F20 de 2017 en USB, bibliothèque Bluetooth
+  d'une autre construction). Testé sur PC.
+- Changement de mode de conduite : Android Auto s'effaçait 3,5 s pour laisser voir la fenêtre du mode, même quand
+  l'affichage du mode était désactivé dans l'iDrive : écran noir à chaque changement
+  ([discussion #28](https://github.com/Jiraiya43/EntryNav2-Android-Auto/discussions/28)). L'appli lit maintenant ce
+  réglage de l'iDrive, et Android Auto reste à l'écran quand il est coupé. Si le réglage ne peut pas être lu, rien ne
+  change. Lu dans le système de la voiture de référence et testé sur PC, pas encore essayé en voiture.
+
 ## [0.13.0-rc.4] - 2026-11-18 · PC
 
 Version candidate : pastille du volume pendant un appel, contrôle de compatibilité à jour pour les écrans 800x480.
@@ -371,7 +398,8 @@ Première version publique. Essayée sur une BMW G20 de 2019, logiciel iDrive `2
   encore suivie sur une voiture.
 - Voir les [limites connues](ROADMAP.md#limites-connues).
 
-[Non publié]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/compare/v0.13.0-rc.4...HEAD
+[Non publié]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/compare/v0.13.0-rc.5...HEAD
+[0.13.0-rc.5]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/releases/tag/v0.13.0-rc.5
 [0.13.0-rc.4]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/releases/tag/v0.13.0-rc.4
 [0.13.0-rc.3]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/releases/tag/v0.13.0-rc.3
 [0.13.0-rc.2]: https://github.com/Jiraiya43/EntryNav2-Android-Auto/releases/tag/v0.13.0-rc.2

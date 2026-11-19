@@ -68,7 +68,7 @@ Le protocole Android Auto côté voiture, sans rien de propre à BMW.
 | `evo_gps` | Lecture passive du GPS de la voiture |
 | `evo_mic` | Micro de la voiture pour l'Assistant |
 | `evo_wlan`, `evo_ap` | Wi-Fi de la voiture, allumé comme le fait CarPlay |
-| `wifi_link` | Qualité de la liaison Wi-Fi avec le téléphone, lue dans le noyau pour les journaux (testé sur PC) |
+| `wifi_link` | Qualité de la liaison Wi-Fi avec le téléphone, lue dans le noyau pour les journaux, avec l'état du lien Bluetooth des BMW Apps (testé sur PC) |
 | `alps_spp`, `evo_spp_snapshot` | Pile Bluetooth de la voiture : commandes, et lecture de son état en mémoire |
 | `evo_elf.hpp` | Symboles exportés par une bibliothèque de la voiture, lus dans son fichier |
 | `evo_control`, `control_address.hpp` | Commandes de l'appli vers le service, par un socket Unix au nom abstrait (ni fichier ni port réseau) |
@@ -91,7 +91,7 @@ Le protocole Android Auto côté voiture, sans rien de propre à BMW.
 | `pending_restart.hpp` | Redémarrage d'Android Auto quand la case du câble USB change en marche (testé sur PC) |
 | `service_link` | Lancement du superviseur, commandes au service, arrêt |
 | `car_signals` | Marche arrière, appels, jour et nuit, mode de conduite, lus dans l'iDrive |
-| `idrive_coding` | Codage de la voiture lu dans l'iDrive au démarrage de l'appli et écrit pour le service : touches du contrôleur, marque (BMW ou MINI) |
+| `idrive_coding` | Codage de la voiture lu dans l'iDrive au démarrage de l'appli et écrit pour le service : touches du contrôleur, marque (BMW ou MINI) ; réglage de la fenêtre du mode de conduite, lu pour l'appli |
 | `app_guards` | Interrupteur, garde-fou contre les plantages, démarrage automatique |
 | `app_log`, `log_profile.hpp` | Journal de l'appli, profil maintenance |
 | `popup_peek.hpp`, `cds_parse.hpp` | Fenêtres de l'iDrive par-dessus Android Auto, lecture des données de l'iDrive |

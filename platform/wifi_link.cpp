@@ -430,11 +430,22 @@ std::string describeWifiLink(const WifiSample& now, const WifiSample* before) {
             add(line, ", ", "%lld segment(s) sent again since it opened", now.tcp.resent);
         }
     }
+    if (now.apps.read) {
+        const bool idle = now.apps.state == 1 && now.apps.transport == 0;
+        if (now.apps.connected || idle) {
+            line += line.empty() ? "" : "; ";
+            line += now.apps.connected ? "BMW Apps Bluetooth link connected" : "BMW Apps Bluetooth link idle";
+        } else {
+            add(line, "; ", "BMW Apps Bluetooth slot state %lld, link state %lld", now.apps.state, now.apps.transport);
+        }
+    }
     return line;
 }
 
 WifiLinkLog::WifiLinkLog()
-    : fd_(-1),
+    : appsProbe_(nullptr),
+      appsUser_(nullptr),
+      fd_(-1),
       first_(false),
       seenActive_(false),
       hasBefore_(false),
@@ -453,6 +464,12 @@ WifiLinkLog::~WifiLinkLog() {
 void WifiLinkLog::enable(const char* interface) {
     aa::MutexLock lock(lock_);
     interface_ = interface;
+}
+
+void WifiLinkLog::setAppsProbe(AppsProbe probe, void* user) {
+    aa::MutexLock lock(lock_);
+    appsProbe_ = probe;
+    appsUser_ = user;
 }
 
 void WifiLinkLog::forget() {
@@ -527,6 +544,9 @@ void WifiLinkLog::sample(uint32_t nowMs) {
             ELOG("WifiLink", "no Wi-Fi figures from the kernel for %s (nl80211, errno %d): TCP figures only",
                  interface_.c_str(), errno);
         }
+    }
+    if (appsProbe_) {
+        now.apps.read = appsProbe_(appsUser_, now.apps);
     }
     const std::string line = describeWifiLink(now, hasBefore_ ? &before_ : nullptr);
     if (!line.empty()) {

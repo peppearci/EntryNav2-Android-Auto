@@ -424,6 +424,23 @@ static void advertisementCases() {
     assert(!evo::refreshAdvertisement(bt, reader, slot));
     failUuid = false;
 }
+// --compat: a failed Bluetooth point stops wireless only (#106, F20 2017 over USB with an unknown Alps build).
+void compatBluetoothCases() {
+    std::string detail;
+    assert(!strcmp(bluetoothLevel("ok", false, detail), "ok") && detail.empty());
+    assert(!strcmp(bluetoothLevel("ok", true, detail), "ok") && detail.empty());
+    detail = "unknown Alps structure (sizes 15024/480/36)";
+    assert(!strcmp(bluetoothLevel("block", false, detail), "block"));
+    assert(detail == "unknown Alps structure (sizes 15024/480/36); wireless only, USB mode does not use Bluetooth");
+    detail = "unknown Alps structure (sizes 15024/480/36)";
+    assert(!strcmp(bluetoothLevel("block", true, detail), "info"));
+    assert(detail == "unknown Alps structure (sizes 15024/480/36); not used over USB");
+    detail.clear();
+    assert(!strcmp(bluetoothLevel("warn", true, detail), "info") && detail == "not used over USB");
+    detail.clear();
+    assert(!strcmp(bluetoothLevel("block", false, detail), "block"));
+    assert(detail == "wireless only, USB mode does not use Bluetooth");
+}
 int main() {
     const uint8_t generic[] = {1, 0x11, 1, 1, 0x11, 1};
     const std::vector<uint8_t> genericPair(generic, generic + 6);
@@ -461,7 +478,9 @@ int main() {
     slot5Cases(bmw, genericPair);
     slotCases(bmw, genericPair);
     advertisementCases();
+    compatBluetoothCases();
     puts(
         "PASS supervisor: actual BMW and generic preflight, exact child snapshot, saved pairs reloaded/restored, "
-        "partial failures and busy/third-party refusals, slot 5 with slot 0 left to BMW Apps");
+        "partial failures and busy/third-party refusals, slot 5 with slot 0 left to BMW Apps, Bluetooth points of "
+        "the check for wireless only");
 }

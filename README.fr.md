@@ -14,9 +14,10 @@ Sans boîtier, sans câble obligatoire, sans remplacer aucun fichier BMW.
 </div>
 
 > [!WARNING]
-> Logiciel expérimental qui écrit sur le système de la voiture. Il n'a été essayé que sur **une voiture** pour
-> l'instant. Lire d'abord l'[état du projet](#état-du-projet) et l'[avertissement](#licence-et-avertissement). Ni BMW
-> ni Google ne sont liés à ce projet.
+> Logiciel expérimental qui écrit sur le système de la voiture. Il est développé sur **une voiture** ; les
+> propriétaires d'une vingtaine d'autres disent ce qu'ils ont vu ([liste](docs/COMPATIBILITE.md)), et rien ne garantit
+> qu'il marche sur la vôtre. Lire d'abord l'[état du projet](#état-du-projet) et
+> l'[avertissement](#licence-et-avertissement). Ni BMW ni Google ne sont liés à ce projet.
 
 ## Ce que ça fait
 

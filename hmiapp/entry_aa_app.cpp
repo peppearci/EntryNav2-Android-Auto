@@ -538,7 +538,8 @@ bool appOnInit(bmw::PluginApp* self) {
     addStateHandler(self, kAaState, kHandlerVisible, &onAaVisible);
     g_initTime = monoSeconds();
     bool ok = self->onInit();
-    writeIdriveCoding();  // the car's keys and brand, for the service
+    writeIdriveCoding();   // the car's keys and brand, for the service
+    readDriveModePopup();  // only logged here: read again at each driving mode change
     alog("onInit: handlers registered, base onInit -> %d, start automatically %s, USB cable %s", static_cast<int>(ok),
          autostartOn() ? "on" : "off", usbCableOn() ? "on" : "off");
     g_runApp = self;

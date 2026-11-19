@@ -382,6 +382,21 @@ bool preflight(evo::SppSnapshotReader& reader, Baseline& b) {
 void compatLine(const char* level, const char* id, const std::string& detail = std::string()) {
     printf("@%s|%s|%s\n", level, id, detail.c_str());
 }
+// The Bluetooth points (alps, uuid, spp) matter to wireless only: over USB the supervisor checks the screen alone and
+// the service never opens the Alps stack. Without the USB file a failed point keeps its level and says that USB does
+// not need it; with the file it is only information.
+const char* bluetoothLevel(const char* level, bool usb, std::string& detail) {
+    if (!strcmp(level, "ok")) {
+        return level;
+    }
+    detail += detail.empty() ? "" : "; ";
+    detail += usb ? "not used over USB" : "wireless only, USB mode does not use Bluetooth";
+    return usb ? "info" : level;
+}
+void bluetoothLine(bool usb, const char* level, const char* id, std::string detail = std::string()) {
+    level = bluetoothLevel(level, usb, detail);
+    compatLine(level, id, detail);
+}
 // Functions found at run time (dlopen) escape the loader's own check.
 std::string missingFunctions(const char* library, const char* const* names, size_t count) {
     evo::ElfFile elf;
@@ -428,6 +443,15 @@ int compatReport() {
                                 "snd_pcm_recover", "snd_pcm_close",      "snd_strerror"};
     const std::string noAlsa = missingFunctions("/usr/lib/libasound.so.2", alsa, sizeof(alsa) / sizeof(alsa[0]));
     compatLine(noAlsa.empty() ? "ok" : "warn", "mic", noAlsa);
+    // The mode a start would use: the USB file, read as the service reads it.
+    std::string usbPort;
+    const int usbSetting = evo::readUsbSetting(evo::contract::kUsb, usbPort);
+    if (usbSetting < 0) {
+        compatLine("block", "usb", std::string(evo::contract::kUsb) + " holds something else than a USB port");
+    } else if (usbSetting == 1) {
+        compatLine("info", "usb", usbPort);
+    }
+    const bool usb = usbSetting == 1;
     if (serviceRunning()) {
         compatLine("info", "running");  // the screen and Bluetooth are in use: they say nothing about the car
         return 0;
@@ -451,16 +475,16 @@ int compatReport() {
     evo::SppSnapshotReader reader;
     evo::SppSlotSnapshot slot;
     if (!reader.open() || !reader.read(0, slot)) {
-        compatLine("block", "alps", reader.error());
+        bluetoothLine(usb, "block", "alps", reader.error());
     } else {
-        compatLine(slot.idle() ? "ok" : "warn", "alps");
-        compatLine(evo::baselineSupported(slot.uuidPayload) ? "ok" : "block", "uuid", hex(slot.uuidPayload));
+        bluetoothLine(usb, slot.idle() ? "ok" : "warn", "alps");
+        bluetoothLine(usb, evo::baselineSupported(slot.uuidPayload) ? "ok" : "block", "uuid", hex(slot.uuidPayload));
         evo::AlpsSppLink bt;
         bt.setMonitorOnly(true);
         std::vector<uint8_t> cfg;
         const bool readable =
             bt.start(0) && bt.readConfiguration(0, 0x6203, cfg, 2000) && cfg.size() == 1 && cfg[0] <= 1;
-        compatLine(readable ? "ok" : "block", "spp");
+        bluetoothLine(usb, readable ? "ok" : "block", "spp");
     }
     aa::ApInfo ap;
     std::string source;

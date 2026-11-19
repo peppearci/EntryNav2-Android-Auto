@@ -14,8 +14,10 @@ English · [Français](README.fr.md)
 </div>
 
 > [!WARNING]
-> This is experimental software that writes to your car's head unit. It has been tried on **one car** so far. Read
-> [Status](#status) and the [disclaimer](#licence-and-disclaimer) first. It is not affiliated with BMW or Google.
+> This is experimental software that writes to your car's head unit. It is developed on **one car**; owners of about
+> twenty others report what they saw ([list](docs/COMPATIBILITE.md), in French), and nothing guarantees that it works on
+> yours. Read [Status](#status) and the [disclaimer](#licence-and-disclaimer) first. It is not affiliated with BMW or
+> Google.
 
 ## Features
 

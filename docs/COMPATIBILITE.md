@@ -20,6 +20,7 @@ rapports de leurs propriétaires : elles disent ce qu'ils ont vu, avec la versio
 | G20 de 2019 | `202207190806` | 1280x480 | sans fil | 0.12.0-rc.6 | marche ; lenteur au bout d'une minute avec un Galaxy Z Fold7, disparue en bloquant My BMW ([#44](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/44)) |
 | G21 320d de 2020 | `202402191339` | 1280x480 | sans fil | 0.12.0 | marche, guidage au compteur avec Waze ; lenteur en sans-fil avec un Galaxy S26 Ultra, partie avec une mise à jour d'Android Auto puis revenue ; caméra et vue panorama ouvertes par leur bouton restées sous Android Auto, à l'étude ([#26](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/26)) |
 | X3 G01 de 2020 | `202003311616` | 1280x480 | sans fil, USB | 0.13.0-rc.1 | marche, double MEDIA ; flèches au compteur avec `kombi-single-maneuver` ; lenteur en sans-fil avec un Galaxy S24+ ([#17](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/17)) ; la touche favorite du son Bluetooth fait quitter Android Auto ([#87](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/87)) |
+| F20 118i LCI de 2017 | `201708081739` | non relevé (écran de 8,8 pouces monté après coup) | USB (unité sans Wi-Fi) | 0.13.0-rc.4 | marche : toucher, molette, son Bluetooth ; contrôle bloqué sur `alps` (bibliothèque Bluetooth d'une autre construction), sans effet en USB ; iDrive figé puis redémarré une fois au premier démarrage avec l'appli ([#106](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/106)) |
 | F20 118i LCI de 2018 | `202402191339` | 800x480 | USB ; sans fil aussi, sans CarPlay activé ni antenne Wi-Fi, téléphone près de la console | 0.12.1-rc.4 | marche, ancien contrôleur ; pastille du volume vue après un redémarrage ; MEDIA, COM et double MEDIA ([#45](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/45), [#55](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/55)) |
 | F20 120i LCI de 2019 | `201811150004` | 1280x480 (écran de 8,8 pouces monté après coup) | USB (unité sans Wi-Fi) | 0.12.1-rc.4 | marche ; bouton vocal sans effet ([discussion #28](https://github.com/Jiraiya43/EntryNav2-Android-Auto/discussions/28)) |
 | F21 de 2018 | non indiqué | non relevé | USB | 0.12.1-rc.3 | marche ; commandes vocales lentes, avec AAIdrive installé aussi ([#68](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/68)) |
@@ -29,6 +30,7 @@ rapports de leurs propriétaires : elles disent ce qu'ils ont vu, avec la versio
 | F45 225xe | `202402191339` | 1280x480 | sans fil, USB | 0.13.0-rc.1 | marche ; sans-fil lent au bout de quelques minutes, fluide par câble ; glissements tactiles à l'étude ([discussion #30](https://github.com/Jiraiya43/EntryNav2-Android-Auto/discussions/30)) |
 | X1 F48 de 2018 | `202207190806` | 800x480 | sans fil, USB | 0.13.0-rc.3 | marche ; plus de pastille du volume au toucher en 0.13.0-rc.3 ; démarrage sans fil parfois bloqué ([#72](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/72)) |
 | X1 F48 | `201802230007` | 1280x480 | sans fil, USB | 0.12.1-rc.4 | marche ; coupures du sans-fil de temps en temps ; pas de guidage à la tête haute : la navigation BMW de ces voitures passe par D-Bus ([#79](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/79)) |
+| X1 F48 LCI de 2020 | `202306092158` | 1280x480 | sans fil | 0.13.0-rc.3 | marche avec un OnePlus 13, toucher et molette ; l'iDrive a redémarré une fois de trop juste après l'installation ([#103](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/103)) |
 | i3 | `202012141616` | 800x480 | USB ; sans fil par un adaptateur Android Auto sur l'USB | 0.13.0-alpha.2 | marche, ancien contrôleur ([#19](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/19)) |
 | MINI Clubman F54 de 2019 | `202111011321` | 1280x480 | sans fil | 0.13.0-rc.2 | marche ; écran rond : marges et toucher justes en 0.13.0-rc.2 ([#78](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/78)) |
 | MINI Clubman F54 de 2023 | `202402191339` | non relevé (8,8 pouces) | USB | non indiquée | marche ; l'écran rond cache la colonne de gauche ([#64](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/64)) |
@@ -55,7 +57,8 @@ programmes restent dans `/tmp`, en mémoire.
 | `mic` | Fonctions du micro | Douteux |
 | `video`, `order` | **Démarrage à blanc :** taille de l'écran, emplacement de l'image, superposition des couches | Bloquant |
 | `screen` | Écran d'une autre taille que 1280x480 et 800x480 : accepté, mais jamais essayé en voiture | Douteux |
-| `alps`, `uuid`, `spp` | **Démarrage à blanc :** bibliothèque Bluetooth de même structure, profil reconnu, état lisible | Bloquant ; Bluetooth occupé : douteux |
+| `alps`, `uuid`, `spp` | **Démarrage à blanc :** bibliothèque Bluetooth de même structure, profil reconnu, état lisible | Bloquant pour le sans-fil seulement ; Bluetooth occupé : douteux. En mode USB : information |
+| `usb` | Mode USB choisi : fichier `/var/local/data/AA/usb` présent ([USB](USB.md)) | Information ; fichier qui contient autre chose qu'un nom de prise : bloquant |
 | `running` | Android Auto tourne déjà : l'écran et le Bluetooth ne sont pas contrôlés | Information |
 | `hotspot`, `gps` | Wi-Fi de la voiture disponible, GPS de la voiture reconnu | Information |
 
@@ -73,10 +76,15 @@ Deux mécanismes font ce travail :
 |---|---|---|
 | Aucune ligne `@block`, logiciel `202111011321` | Même logiciel que la voiture de référence | Possible |
 | Aucune ligne `@block`, autre logiciel ou lignes `@warn` | Même type d'unité, mais rien ne prouve que tout se comporte à l'identique | Possible, et réversible |
-| Au moins une ligne `@block`, ou une fonction absente | Il manque quelque chose sur cette voiture | À ne pas faire |
+| `@block` seulement sur `alps`, `uuid` ou `spp` | Le Bluetooth de cette voiture n'est pas pris en charge : le sans-fil ne peut pas marcher | Possible en mode USB seulement |
+| Au moins une autre ligne `@block`, ou une fonction absente | Il manque quelque chose sur cette voiture | À ne pas faire |
 
 « Possible, et réversible » sera le cas le plus fréquent sur une autre voiture : toutes les fonctions appelées existent et
 le démarrage à blanc passe, mais le contrôle ne peut pas prouver qu'Android Auto marchera jusqu'au bout.
+
+Le Bluetooth ne sert qu'au sans-fil : en mode USB, le service n'y touche pas. Le détail d'un `@block` sur `alps`, `uuid`
+ou `spp` le rappelle (`wireless only`). Avec le fichier `/var/local/data/AA/usb` posé avant le contrôle, ces points
+sortent en `@info` : le contrôle suit alors le mode USB.
 
 ## Autres tailles d'écran
 
@@ -112,8 +120,8 @@ avant : My BMW ne trouve alors plus la voiture tant qu'Android Auto tourne. Le j
 Pour vérifier cet emplacement, Android Auto lit les tables de la pile en mémoire. Sur une autre voiture :
 
 1. Les tables sont trouvées dans la bibliothèque de cette voiture, par leurs noms exportés.
-2. Leurs trois tailles doivent être celles de la voiture de référence. Sinon, la voiture est refusée, et le rapport donne
-   ces tailles.
+2. Leurs trois tailles doivent être celles de la voiture de référence. Sinon, le sans-fil est refusé et le rapport donne
+   ces tailles ; le mode USB, qui ne touche pas au Bluetooth, reste possible.
 3. Chaque lecture recoupe deux copies de chaque identifiant. Au moindre désaccord, rien n'est modifié.
 4. Après l'emprunt, Android Auto relit la table pour y retrouver son propre identifiant. Sinon, il s'arrête et rend
    l'emplacement.

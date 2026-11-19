@@ -88,7 +88,8 @@ les 10 secondes jusqu'à la fin de la session :
 
 ```text
 [WifiLink] 5180 MHz; signal -52 dBm (average -51); from the phone 135.0 Mbit/s;
-in 10 s: 812 frames sent, 35 retried, 0 lost; on the Wi-Fi for 135 s; TCP round trip 4.2 ms, 0 segment(s) sent again
+in 10 s: 812 frames sent, 35 retried, 0 lost; on the Wi-Fi for 135 s; TCP round trip 4.2 ms, 0 segment(s) sent again;
+BMW Apps Bluetooth link idle
 ```
 
 | Partie | Sens |
@@ -99,9 +100,12 @@ in 10 s: 812 frames sent, 35 retried, 0 lost; on the Wi-Fi for 135 s; TCP round 
 | `frames sent, retried, lost` | Trames envoyées au téléphone depuis la ligne précédente, réémises, puis abandonnées |
 | `on the Wi-Fi for` | Temps depuis que le téléphone a rejoint le Wi-Fi. S'il repart de zéro, le téléphone l'a quitté puis rejoint |
 | `TCP round trip`, `sent again` | Temps d'aller-retour de la connexion Android Auto, et morceaux qu'il a fallu renvoyer |
+| `BMW Apps Bluetooth link` | Lien Bluetooth des BMW Apps (My BMW, AAIdrive, option *Apps* du téléphone dans les réglages de la voiture) : `connected` quand un téléphone le tient, `idle` sinon ; un autre état est écrit en chiffres (`slot state`, `link state`). Il passe par la même puce que le Wi-Fi |
 
 Une partie que le Wi-Fi de la voiture ne donne pas est absente de la ligne. Ces chiffres sont lus dans le noyau, comme
-le fait la commande `iw` : rien n'est réglé ni envoyé, et l'adresse du téléphone n'est pas écrite. Par câble USB, il n'y a
+le fait la commande `iw` : rien n'est réglé ni envoyé, et l'adresse du téléphone n'est pas écrite. L'état du lien BMW
+Apps est lu dans la mémoire de la pile Bluetooth BMW, comme au démarrage, sans rien y changer ; il manque quand Android
+Auto occupe lui-même l'emplacement des BMW Apps (`takes SPP 0` dans le journal du superviseur). Par câble USB, il n'y a
 pas de ligne `[WifiLink]`.
 
 ### Effacer les journaux

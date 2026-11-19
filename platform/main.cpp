@@ -81,6 +81,18 @@ bool alpsReady(evo::SppSnapshotReader& reader, unsigned instance, const AlpsBase
     }
     return ok;
 }
+const unsigned kBmwAppsSlot = 0;  // BMW Apps' own SPP slot, left to it while Android Auto is on slot 5
+// For the [WifiLink] lines: whether a phone holds BMW Apps' link. Only reads, through the snapshot reader.
+bool readAppsSlot(void* user, evo::AppsSlot& out) {
+    evo::SppSlotSnapshot slot;
+    if (!static_cast<evo::SppSnapshotReader*>(user)->read(kBmwAppsSlot, slot)) {
+        return false;
+    }
+    out.connected = slot.connected;
+    out.state = slot.state;
+    out.transport = slot.transportState;
+    return true;
+}
 // The Bluetooth half of a wireless start: the SPP data interface, then the Android Auto UUID, each step checked
 // against the Alps state aa-supervisor saved. False when the service must stop.
 bool advertiseAndroidAuto(evo::ServiceApp& app, evo::SppSnapshotReader& alpsReader, unsigned instance,
@@ -325,6 +337,9 @@ int main(int argc, char** argv) {
     evo::SppSnapshotReader alpsReader;
     if (guarded && (!alpsReader.open() || !alpsReady(alpsReader, instance, baseline))) {
         return 1;
+    }
+    if (guarded && instance != kBmwAppsSlot) {
+        app.wifiLink.setAppsProbe(readAppsSlot, &alpsReader);  // same thread as the refreshes that use the reader
     }
     if (input != evo::INPUT_OFF) {
         app.knob = &knob;  // before the control thread, which reads it ("call" command)

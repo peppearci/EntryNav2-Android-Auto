@@ -10,7 +10,9 @@
 #include "../platform/service_contract.hpp"
 #include "app_log.hpp"
 #include "cds_parse.hpp"
+#include "idrive_coding.hpp"
 #include "mono_clock.hpp"
+#include "popup_peek.hpp"
 #include "service_link.hpp"
 
 namespace evo {
@@ -149,6 +151,13 @@ bool onDriveMode(int prop, const bmw::BasicString<unsigned short>& value) {
     const bool change = valid && ((was >= 0 && was != invalid) ||
                                   (was < 0 && g_driveModeSubAt >= 0 && monoSeconds() - g_driveModeSubAt >= 5));
     if (!change) {
+        return true;
+    }
+    // With iDrive's driving mode popup turned off, nothing comes to show: Android Auto stays, and should a popup
+    // still open, the ordinary popup peek steps aside for it.
+    const DriveModePopup popup = readDriveModePopup();
+    if (!driveModePopupExpected(popup.setting, popup.forced)) {
+        alog("drive mode change: iDrive's driving mode popup is off, Android Auto stays on screen");
         return true;
     }
     char msg[32];

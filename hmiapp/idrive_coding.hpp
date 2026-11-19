@@ -18,6 +18,17 @@ namespace app {
 // (logged); a file not written is removed.
 bool writeIdriveCoding();
 
+// iDrive's own driving mode popup, read for the app itself (popup_peek.hpp, driveModePopupExpected).
+//  - setting: the driving mode entry of iDrive's popup settings (per driver profile), as its driving mode device
+//    IDevCarFES::isPopupAvailable() gives it: on and the device coded. Reached as HmiMain3D's CCarFesModeService::init
+//    does; the function is called only when the device's vtable holds this very one.
+//  - forced: coding variant 0x519d, with which CDevCarFES35 shows the popup even with the setting off.
+// Each 1, 0, or -1 when it could not be read. Logged. Runs on the app thread, like writeIdriveCoding().
+struct DriveModePopup {
+    int setting, forced;
+};
+DriveModePopup readDriveModePopup();
+
 }  // namespace app
 }  // namespace evo
 

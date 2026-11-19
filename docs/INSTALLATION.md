@@ -31,7 +31,7 @@ ancienne, suivre celle de l'archive (dans la 0.10.0, le superviseur s'appelle `e
 Depuis le PC, dans le dossier de l'archive :
 
 ```sh
-scp entrynav2-android-auto-0.13.0-rc.4-armhf.tar root@169.254.1.0:/tmp/
+scp entrynav2-android-auto-0.13.0-rc.5-armhf.tar root@169.254.1.0:/tmp/
 ssh root@169.254.1.0
 ```
 
@@ -43,7 +43,7 @@ encore écrit sur la mémoire flash.
 Rien n'est modifié pendant cette étape.
 
 ```sh
-V=0.13.0-rc.4
+V=0.13.0-rc.5
 cd /tmp && rm -rf entrynav2-android-auto-$V && tar -xf entrynav2-android-auto-$V-armhf.tar && cd entrynav2-android-auto-$V
 md5sum -c MD5SUMS
 head -n 1 /etc/version
@@ -69,6 +69,8 @@ LD_LIBRARY_PATH=$L XDG_RUNTIME_DIR=/run/system/0 WAYLAND_DISPLAY=wayland-0 HOME=
 - La boucle ne doit **rien** afficher : chaque ligne montre une fonction ou une bibliothèque absente de cette voiture.
 - `aa-supervisor --compat` répond une ligne par point : `@ok|…` réussi, `@warn|…` douteux, `@block|…` **bloquant**. Une seule
   ligne `@block` : ne pas installer. Le sens de chaque point est dans [compatibilité](COMPATIBILITE.md).
+- Exception : un `@block` sur `alps`, `uuid` ou `spp` (détail `wireless only`) n'empêche que le sans-fil. L'installation
+  reste possible en mode [USB](USB.md), à choisir avant le premier *Démarrer*.
 
 Ce résultat, avec la première ligne de `/etc/version`, fait un bon
 [rapport de compatibilité](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/new/choose) pour une voiture pas encore listée.
@@ -153,6 +155,7 @@ le retire aussi (avant `sync`). Garder `/var/local/data/AA` conserve les réglag
 |---|---|
 | Pas de ligne Android Auto dans *Media* | Vérifier l'étape 3 (`md5sum -c`), puis redémarrer l'unité : l'iDrive ne lit ses applis qu'au démarrage. |
 | L'iDrive redémarre plusieurs fois juste après l'avoir chargée | L'appli ne se lance plus au troisième essai et l'iDrive repart sans elle. Pour la réactiver après correction : `rm -f /var/local/data/AA/app.disable /var/local/data/AA/app-guard`, puis redémarrer. |
+| Sans fil : le téléphone, appairé à la voiture, ne lance jamais Android Auto | Réappairer le téléphone pendant qu'Android Auto tourne (*Démarrer* d'abord). Un téléphone appairé quand le service ne tournait pas garde une liste des services de la voiture sans Android Auto ([#72](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/72)). |
 | Android Auto ne démarre pas | Activer les journaux ([maintenance](MAINTENANCE.md)), reproduire, puis ouvrir un [ticket](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/new/choose) avec les journaux. |
 | Le système est resté en écriture | `mount -o remount,ro /`, ou redémarrer l'unité. |
 | L'écran de l'iDrive ne répond plus | Maintenir le bouton marche/arrêt de l'iDrive environ 30 secondes pour redémarrer l'unité. |

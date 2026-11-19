@@ -205,6 +205,32 @@ void logLines() {
     unmeasured.station.signalDbm = evo::kNoFigure;
     unmeasured.hasTcp = false;
     CHECK(evo::describeWifiLink(unmeasured, nullptr).find("5180 MHz; average signal -51 dBm; from the phone") == 0);
+    // BMW Apps' Bluetooth slot, when the service reads it: last, after the TCP figures.
+    const std::string tcpLine = "TCP round trip 0.9 ms, 0 segment(s) sent again since it opened";
+    evo::WifiSample apps = tcpOnly;
+    apps.apps.read = apps.apps.connected = true;
+    apps.apps.state = apps.apps.transport = 1;
+    CHECK(evo::describeWifiLink(apps, nullptr) == tcpLine + "; BMW Apps Bluetooth link connected");
+    apps.apps.connected = false;
+    apps.apps.transport = 0;
+    CHECK(evo::describeWifiLink(apps, nullptr) == tcpLine + "; BMW Apps Bluetooth link idle");
+    apps.apps.state = 2;
+    apps.apps.transport = 1;
+    CHECK(evo::describeWifiLink(apps, nullptr) == tcpLine + "; BMW Apps Bluetooth slot state 2, link state 1");
+    apps.apps.read = false;
+    CHECK(evo::describeWifiLink(apps, nullptr) == tcpLine);
+    evo::WifiSample appsAlone;
+    appsAlone.apps.read = true;
+    appsAlone.apps.state = 1;
+    CHECK(evo::describeWifiLink(appsAlone, nullptr) == "BMW Apps Bluetooth link idle");
+}
+
+unsigned appsReads = 0;
+bool countAppsReads(void* user, evo::AppsSlot& out) {
+    CHECK(user == &appsReads);
+    ++appsReads;
+    out.connected = true;
+    return true;
 }
 
 // A TCP connection on loopback: the car's end in car, the phone's in phone.
@@ -291,6 +317,23 @@ void connectionCopy() {
         CHECK(closedForPhone(phone));
         close(phone);
     }
+    {  // BMW Apps' slot: read once per line, not at every turn of the main loop.
+        int car = -1, phone = -1;
+        connectPair(car, phone);
+        evo::WifiLinkLog log;
+        log.enable("entry-aad-no-such-interface");
+        log.setAppsProbe(countAppsReads, &appsReads);
+        log.connected(car);
+        close(car);
+        log.turn(1000, true);
+        log.turn(1100, true);
+        CHECK(appsReads == 1);
+        log.turn(11000, true);
+        CHECK(appsReads == 2);
+        log.turn(11100, false);
+        CHECK(appsReads == 2 && closedForPhone(phone));
+        close(phone);
+    }
     {  // A new connection replaces the one before; the log's end gives the last copy back.
         int car = -1, phone = -1, car2 = -1, phone2 = -1;
         connectPair(car, phone);
@@ -317,6 +360,6 @@ int main() {
     logLines();
     tcpFigures();
     connectionCopy();
-    puts("PASS Wi-Fi link: station messages, log lines, TCP figures, the connection's copy");
+    puts("PASS Wi-Fi link: station messages, log lines, TCP figures, the connection's copy, BMW Apps' slot");
     return 0;
 }
