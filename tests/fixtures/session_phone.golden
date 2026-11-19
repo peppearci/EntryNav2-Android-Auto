@@ -333,7 +333,6 @@ hu ch=0 fl=03 000c 08827f
 ph ch=6 fl=08 piece 0000000000000000002a6061
 ph ch=6 fl=0a piece 62636465666768696a6b6c6d6e6f70717273
 ph ch=0 fl=03 000b 08837f
-hu ch=6 fl=0b 8004 08031001
 hu ch=0 fl=03 000c 08837f
 -- FIRST announcing more than came
 ph ch=6 fl=09 piece 0000000000000000002a6061
@@ -389,10 +388,9 @@ ph shutdown
 hu <closed>
 session ended=1
 cb video frame=1 pts=42 606162636465666768696a6b6c6d6e6f70717273
-cb video frame=2 pts=42 606162636465666768696a6b6c6d6e6f70717273
-cb video frame=3 pts=1 99
+cb video frame=2 pts=1 99
+cb video frame=3 pts=42 606162636465666768696a6b6c6d6e6f70717273
 cb video frame=4 pts=42 606162636465666768696a6b6c6d6e6f70717273
-cb video frame=5 pts=42 606162636465666768696a6b6c6d6e6f70717273
 cb ended
 == plain edges
 ph ch=0 fl=03 000b 08817f

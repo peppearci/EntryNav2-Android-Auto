@@ -41,7 +41,7 @@ public:
         kPending,      // a FIRST or MIDDLE fragment, kept
         kComplete,     // `message` holds a whole message
         kOverflow,     // the channel's message would pass frame::kMaxMessage: its fragments are dropped
-        kNoFirst,      // a LAST fragment with nothing before it: dropped
+        kNoFirst,      // a MIDDLE or LAST fragment without a FIRST on its channel: dropped
         kShortOfSize,  // a LAST fragment closed a message smaller than announced: dropped
     };
 
