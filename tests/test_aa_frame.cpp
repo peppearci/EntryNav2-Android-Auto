@@ -112,6 +112,16 @@ void reassembly() {
     CHECK(m == Bytes({3, 4}));
     a.clear();
 
+    // A fragment that could not be decrypted: skip() drops its message up to the LAST, like an overflow.
+    CHECK(a.add(header(6, aa::frame::kFirst, 1, 0), Bytes(4, 0), m) == aa::MessageAssembler::kPending);
+    CHECK(!a.skipping(6));
+    a.skip(6);
+    CHECK(a.skipping(6) && !a.skipping(7));
+    CHECK(a.add(header(6, aa::frame::kMiddle, 1), Bytes(4, 0), m) == aa::MessageAssembler::kSkipped);
+    CHECK(a.add(header(6, aa::frame::kLast, 1), Bytes(4, 0), m) == aa::MessageAssembler::kSkipped && !a.skipping(6));
+    CHECK(a.add(header(6, aa::frame::kWhole, 1), Bytes(1, 5), m) == aa::MessageAssembler::kComplete);
+    a.clear();
+
     // And 16 MiB for all channels together: the channel is a byte the peer chooses.
     const Bytes almost(aa::frame::kMaxMessage - 1, 0);
     CHECK(a.add(header(1, aa::frame::kFirst, 1, 0), almost, m) == aa::MessageAssembler::kPending);

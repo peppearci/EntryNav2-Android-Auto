@@ -46,6 +46,14 @@ size_t MessageAssembler::pendingBytes() const {
     return total;
 }
 
+void MessageAssembler::skip(uint8_t channel) {
+    Pending& pending = pending_[channel];
+    std::vector<uint8_t>().swap(pending.data);
+    pending.sized = false;
+    pending.size = pending.onWire = 0;
+    pending.skipping = true;
+}
+
 MessageAssembler::Outcome MessageAssembler::add(const FrameHeader& header, const std::vector<uint8_t>& payload,
                                                 std::vector<uint8_t>& message) {
     const uint8_t position = header.position();
@@ -68,10 +76,7 @@ MessageAssembler::Outcome MessageAssembler::add(const FrameHeader& header, const
     const size_t others = pendingBytes() - pending.data.size();
     if (held + payload.size() > frame::kMaxMessage || others + held + payload.size() > frame::kMaxPending) {
         if (position == frame::kMiddle) {
-            std::vector<uint8_t>().swap(pending.data);  // the memory goes now
-            pending.sized = false;
-            pending.size = pending.onWire = 0;
-            pending.skipping = true;  // and the fragments up to the LAST are dropped quietly
+            skip(header.channel);  // the memory goes now, and the fragments up to the LAST are dropped quietly
         } else if (position != frame::kWhole) {
             pending_.erase(header.channel);
         }

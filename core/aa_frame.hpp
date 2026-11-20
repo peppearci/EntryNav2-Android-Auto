@@ -51,8 +51,16 @@ public:
 
     // `payload` is the frame's decrypted payload; `header.length` counts what came on the wire.
     Outcome add(const FrameHeader& header, const std::vector<uint8_t>& payload, std::vector<uint8_t>& message);
-    // Forgets the channel's message in progress (a fragment that could not be decrypted).
+    // Forgets the channel's message in progress.
     void drop(uint8_t channel) { pending_.erase(channel); }
+    // A FIRST or MIDDLE fragment that could not be decrypted: the channel's message is dropped, and the rest of its
+    // fragments up to its LAST with it (kSkipped), as after kOverflow.
+    void skip(uint8_t channel);
+    // The channel's current message was dropped and its fragments are being skipped.
+    bool skipping(uint8_t channel) const {
+        const std::map<uint8_t, Pending>::const_iterator i = pending_.find(channel);
+        return i != pending_.end() && i->second.skipping;
+    }
     void clear() { pending_.clear(); }
     // After kShortOfSize: the wire bytes received and the size the phone announced.
     uint32_t receivedBytes() const { return received_; }
