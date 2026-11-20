@@ -163,6 +163,7 @@ void AASession::onTlsHandshake(const Message& message) {
         printf("[AASession] Sent TLS Handshake response (%u bytes).\n", static_cast<unsigned>(answer.size()));
     }
     if (tls_.established()) {
+        setupUntilMs_ = 0;
         // AuthComplete goes in clear, as every head unit sends it.
         printf("[AASession] >>> TLS Handshake Complete! Sending AuthCompleteNotification...\n");
         sendPlain(channel::kControl, message::authComplete());

@@ -106,7 +106,8 @@ private:
     void resetCounters();
 
     // The wire (aa_session.cpp).
-    bool receiveExactly(uint8_t* to, size_t size);  // also sends the car's input when it is posted
+    // Also sends the car's input when it is posted. received: how many bytes came, whatever the result.
+    bool receiveExactly(uint8_t* to, size_t size, size_t* received = nullptr);
     bool sendExactly(const uint8_t* data, size_t size);
     bool sendFrame(uint8_t channel, uint8_t flags, const uint8_t* payload, size_t size);
     bool sendPlain(uint8_t channel, const Message& message);
@@ -168,6 +169,7 @@ private:
     uint64_t lastReceivedMs_;  // when the phone last sent anything, 0 before its first byte
     TlsClient tls_;
     MessageAssembler assembler_;
+    uint64_t setupUntilMs_;  // the handshake must end by then (kSetupMs); 0 once it has
     bool videoReady_;  // the phone set the video channel up: a focus can go
     bool projected_;   // the last video focus sent was FOCUSED
     KeyframeRequest keyframe_;

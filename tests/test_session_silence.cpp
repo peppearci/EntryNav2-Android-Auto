@@ -58,6 +58,39 @@ static double silentPhone(bool wakes, double max_s) {
     return lasted;
 }
 
+// A phone that answers the version request with a header announcing 5001 bytes, then sends one byte every 2 s and
+// never the rest (seen on the car on 13 November 2026). The silence limit never fires; the setup limit must. Returns
+// how long the session lasted, or -1 after max_s.
+static double stuckPhone(double max_s) {
+    int peers[2];
+    assert(socketpair(AF_UNIX, SOCK_STREAM, 0, peers) == 0);
+    aa::AASession session;
+    g_ended = 0;
+    session.setDisconnectCallback(ended, 0);
+    const double t0 = nowS();
+    assert(session.start(peers[0]));
+    static const unsigned char header[] = {0x00, 0x03, 0x13, 0x89};
+    assert(write(peers[1], header, sizeof(header)) == static_cast<ssize_t>(sizeof(header)));
+    double lasted = -1, lastByte = t0;
+    while (nowS() - t0 < max_s) {
+        if (!session.isActive()) {
+            lasted = nowS() - t0;
+            break;
+        }
+        if (nowS() - lastByte >= 2) {
+            const unsigned char byte = 0x55;
+            if (write(peers[1], &byte, 1) != 1) {
+                break;
+            }
+            lastByte = nowS();
+        }
+        usleep(100000);
+    }
+    session.stop();
+    close(peers[1]);
+    return lasted;
+}
+
 // Written on fd 1 from the signal handler, as the service's own crash line is.
 static void writeLine(const char* line) {
     ssize_t w = write(1, line, strlen(line));
@@ -120,5 +153,9 @@ int main() {
     printf("telephone muet, reveils 10 fois par seconde : fin apres %.1f s\n", woken);
     assert(woken > 9 && woken < 12);
     puts("PASS session : un telephone disparu met fin a la session, meme reveillee par le GPS");
+    const double stuck = stuckPhone(20);
+    printf("phone stuck in the handshake, a byte every 2 s: ended after %.1f s\n", stuck);
+    assert(stuck > 9 && stuck < 12);  // kSetupMs, core/aa_session.cpp
+    puts("PASS session: a phone that never finishes the handshake ends the session after 10 s");
     return 0;
 }
