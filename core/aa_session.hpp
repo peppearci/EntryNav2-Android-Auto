@@ -49,6 +49,9 @@ public:
     // The longest time the phone sent nothing since the previous call, in milliseconds, and starts over. Any thread.
     // After 2 s of silence the head unit pings the phone, which answers at once: seconds here are a link that stalled.
     uint32_t takeLongestSilenceMs() { return longestSilenceMs_.exchange(0); }
+    // The phone ended this session with ByeBye (the user left Android Auto), rather than going silent or breaking the
+    // connection. Read by the ended callback; reset by start().
+    bool phoneSaidGoodbye() const { return goodbye_.load(); }
 
     // Set before start().
     void setDisconnectCallback(SessionEndedCallback cb, void* user_data = nullptr);
@@ -161,6 +164,7 @@ private:
 
     CarInbox inbox_;
     std::atomic<uint32_t> longestSilenceMs_;
+    std::atomic<bool> goodbye_;  // set on the session thread, read by the ended callback
     // Session thread only.
     uint64_t lastReceivedMs_;  // when the phone last sent anything, 0 before its first byte
     TlsClient tls_;

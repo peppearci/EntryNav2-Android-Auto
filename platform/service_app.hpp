@@ -95,6 +95,7 @@ public:
     bool projectionBusy() override;
     void sppLinkOpened() override;
     void handshakeEnded(bool spoke, bool accepted) override;
+    unsigned lostSessions() override;
 
     // ---- UsbHost (stopRequested and projectionBusy are shared) ----
     void usbPhoneReady(int fd) override;
@@ -133,6 +134,8 @@ public:
     unsigned sppLinks, tcpLinks, usbLinks;
     std::atomic<unsigned> videoFrames;  // counted on the session thread without mu
     bool wppReply, wppAccepted;
+    bool projectionOverUsb;  // the last session came over USB (its loss is not the wireless loop's business)
+    unsigned lostWireless;   // wireless sessions ended without ByeBye
 
 private:
     // A phone connection, from the TCP listener or the USB loop: the video is made ready and the session starts.

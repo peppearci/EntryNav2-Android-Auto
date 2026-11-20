@@ -820,6 +820,11 @@ void fullSession(std::vector<std::string>& log) {
     phone.send(0, kSealed, bytes({0x00, 0x0f, 0x08, 0x01}));
     phone.untilClosed();
     ended(link, log);
+    // The service tells a lost session (which closes the phone's Bluetooth link to start again) from this one.
+    if (!s.phoneSaidGoodbye()) {
+        fprintf(stderr, "FAIL the session forgot the phone's ByeBye\n");
+        exit(1);
+    }
 }
 
 // Fragments in odd orders, short messages, a frame that does not decrypt, then the phone leaves.
@@ -876,6 +881,10 @@ void fragmentEdges(std::vector<std::string>& log) {
     phone.settle();
     phone.leave();
     ended(link, log);
+    if (link.session.phoneSaidGoodbye()) {
+        fprintf(stderr, "FAIL a phone that left without ByeBye counted as a goodbye\n");
+        exit(1);
+    }
 }
 
 // Without TLS: what still works, an overflowing reassembly, a frame cut short.

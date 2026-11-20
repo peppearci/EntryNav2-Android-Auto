@@ -41,7 +41,23 @@ void runWirelessLoop(AlpsSppLink& bt, const aa::ApInfo& ap, uint16_t port, Wirel
         host.handshakeEnded(setup.spokeWireless(), ok);
         if (ok) {
             ELOG("WirelessLoop", "WPP accepted; waiting for TCP on port %u", port);
+            // A phone that keeps this link after its session was lost (Wi-Fi stalled 5 s) waits forever: seen on a
+            // MINI F56 with a Galaxy Z Fold, back in 2 s once the link was closed by a manual restart. So the link is
+            // closed as soon as a session is lost while nothing else runs; a phone already back over Wi-Fi is left
+            // alone, and a ByeBye (the user left Android Auto) is not a loss.
+            unsigned lost = host.lostSessions();
             while (!host.stopRequested() && bt.linkUp() && setup.serve(1000)) {
+                const unsigned now = host.lostSessions();
+                if (now == lost) {
+                    continue;
+                }
+                if (host.projectionBusy()) {
+                    lost = now;  // replaced by a new connection already
+                    continue;
+                }
+                ELOG("WirelessLoop",
+                     "session lost while the phone kept this Bluetooth link: closing it to start again");
+                break;
             }
         }
         bt.closeLink();  // owns fd; no close(fd) in the caller

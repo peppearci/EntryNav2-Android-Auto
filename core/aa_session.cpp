@@ -66,6 +66,7 @@ AASession::AASession()
       softwareVersion_(nullptr),
       carMake_(nullptr),
       longestSilenceMs_(0),
+      goodbye_(false),
       lastReceivedMs_(0),
       videoReady_(false),
       projected_(false),
@@ -230,6 +231,7 @@ bool AASession::start(int client_fd) {
     audioMessages_[0] = audioMessages_[1] = 0;
     lastReceivedMs_ = 0;  // the previous thread is joined
     longestSilenceMs_.store(0);
+    goodbye_.store(false);  // after the ended callback of a session replaced above
     resetCounters();
     setRunning(true);
     if (pthread_create(&thread_, nullptr, &AASession::threadMain, this) != 0) {

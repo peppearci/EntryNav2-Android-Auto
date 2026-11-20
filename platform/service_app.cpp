@@ -38,6 +38,8 @@ ServiceApp::ServiceApp(uint16_t p, bool v, volatile sig_atomic_t* quit)
       videoFrames(0),
       wppReply(false),
       wppAccepted(false),
+      projectionOverUsb(false),
+      lostWireless(0),
       quit_(quit) {
     pthread_mutex_init(&mu, nullptr);
     pthread_mutex_init(&connectMu, nullptr);
@@ -96,6 +98,13 @@ void ServiceApp::handshakeEnded(bool spoke, bool accepted) {
     wppReply = wppReply || spoke;
     wppAccepted = wppAccepted || accepted;
     pthread_mutex_unlock(&mu);
+}
+
+unsigned ServiceApp::lostSessions() {
+    pthread_mutex_lock(&mu);
+    const unsigned v = lostWireless;
+    pthread_mutex_unlock(&mu);
+    return v;
 }
 
 ServiceApp::Turn ServiceApp::turn(bool service) {
@@ -403,14 +412,19 @@ void ServiceApp::ended(void* user) {
     // No stop()/join here: this callback runs on the AA session thread.
     a->mic.request(false);
     a->kombi.onSessionEnded();
+    const bool goodbye = a->session.phoneSaidGoodbye();
     pthread_mutex_lock(&a->mu);
     a->focus = false;
     a->asking = false;
     a->mediaPress.cancel();
     unlink(contract::kMediaRecallFile);
+    const bool lost = !goodbye && !a->projectionOverUsb;
+    if (lost) {
+        ++a->lostWireless;
+    }
     pthread_mutex_unlock(&a->mu);
     a->server.notifySessionEnded();
-    ELOG("ServiceApp", "session ended");
+    ELOG("ServiceApp", "session ended%s", goodbye ? " (the phone said goodbye)" : lost ? " (lost)" : "");
 }
 
 void ServiceApp::connected(int fd, void* user) {
@@ -440,6 +454,7 @@ void ServiceApp::startProjection(int fd, bool overUsb) {
     }
     pthread_mutex_lock(&a->mu);
     ++(overUsb ? a->usbLinks : a->tcpLinks);
+    a->projectionOverUsb = overUsb;
     a->tcpPreparing = true;
     a->mediaPress.cancel();
     unlink(contract::kMediaRecallFile);

@@ -203,6 +203,7 @@ void AASession::onNavigationFocus(const Message& message) {
 // close, the phone was seen sending ByeBye right after the discovery and reconnecting every 3 s.
 void AASession::onByeBye(const Message& message) {
     const uint32_t reason = bodyField(message, 1);
+    goodbye_.store(true);  // before the session ends: the ended callback reads it
     const bool sent = sendSealed(channel::kControl, message::byeByeResponse());
     printf("[AASession] >>> ByeByeRequest (reason=%d%s, %u media messages): ByeByeResponse %s, ending the session\n",
            signedOrMinusOne(reason), reason == 1 ? " = quit" : "", mediaMessages_, sent ? "sent" : "SEND FAILED");

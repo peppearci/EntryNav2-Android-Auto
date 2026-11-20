@@ -17,8 +17,9 @@
 #include "service_contract.hpp"
 #include "wireless_setup.hpp"
 
-static std::atomic<int> starts(0), waits(0), listens(0);
+static std::atomic<int> starts(0), waits(0), listens(0), serves(0);
 static std::atomic<bool> fixtureLink(true), borrowed(false);
+static std::atomic<bool> phoneKeepsLink(false);  // the phone keeps its Bluetooth link after accepting the Wi-Fi
 static evo::ServiceApp* instance = 0;
 static volatile sig_atomic_t quitFlag = 0;
 namespace evo {
@@ -53,12 +54,19 @@ bool WirelessSetup::handshake(int) {
     pthread_mutex_lock(&instance->mu);
     instance->tcpPreparing = true;
     pthread_mutex_unlock(&instance->mu);
-    fixtureLink = false;
+    if (!phoneKeepsLink) {
+        fixtureLink = false;
+    }
     ++starts;
     return true;
 }
 bool WirelessSetup::serve(int) {
-    return false;
+    if (!phoneKeepsLink) {
+        return false;
+    }
+    ++serves;
+    usleep(10000);
+    return fixtureLink;
 }
 bool WirelessSetup::listen(int) {
     ++listens;
@@ -76,6 +84,33 @@ static void awaitStarts(int count) {
         usleep(10000);
     }
     assert(starts == count);
+}
+static void awaitServes() {
+    const int before = serves;
+    for (unsigned i = 0; i < 200 && serves < before + 3; ++i) {
+        usleep(10000);
+    }
+    assert(serves >= before + 3);
+}
+static bool linkClosedWithin(unsigned ms) {
+    for (unsigned i = 0; i < ms / 10 && fixtureLink; ++i) {
+        usleep(10000);
+    }
+    return !fixtureLink;
+}
+// A session on a socketpair that ends by itself, without ByeBye: the phone's side of the connection closes.
+static void loseSession(evo::ServiceApp& app) {
+    int pair[2];
+    assert(socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == 0);
+    assert(app.session.start(pair[0]) && app.session.isActive());
+    preparing(false);  // the connection is set up: the session alone keeps the projection busy
+    usleep(50000);
+    assert(fixtureLink);  // a running session leaves the link alone
+    close(pair[1]);
+    for (unsigned i = 0; i < 200 && app.session.isActive(); ++i) {
+        usleep(10000);
+    }
+    assert(!app.session.isActive());
 }
 
 static void mediaClicks(evo::ServiceApp& app) {
@@ -256,12 +291,38 @@ int main() {
     app.ready = app.videoEnabled = false;
     close(peers[1]);
     awaitStarts(2);  // rearming is allowed only after the real session ended
+    {  // A phone that keeps its Bluetooth link after accepting (MINI F56, Galaxy Z Fold): a lost session closes the
+       // link, the phone opens it again and gets a new handshake. A session that is not the wireless loop's (USB) or
+       // that ended with ByeBye (tests/test_session_phone.cpp) leaves the link alone.
+        app.session.setDisconnectCallback(evo::ServiceApp::ended, &app);
+        phoneKeepsLink = true;
+        preparing(false);
+        fixtureLink = true;  // the phone opens the link
+        awaitStarts(3);
+        awaitServes();
+        assert(fixtureLink && app.lostSessions() == 0);
+        loseSession(app);
+        assert(app.lostSessions() == 1 && linkClosedWithin(2000));
+        fixtureLink = true;  // the phone opens it again at once
+        awaitStarts(4);
+        awaitServes();
+        pthread_mutex_lock(&app.mu);
+        app.projectionOverUsb = true;
+        pthread_mutex_unlock(&app.mu);
+        loseSession(app);
+        assert(app.lostSessions() == 1 && !linkClosedWithin(300) && starts == 4);
+        pthread_mutex_lock(&app.mu);
+        app.projectionOverUsb = false;
+        pthread_mutex_unlock(&app.mu);
+        phoneKeepsLink = false;
+    }
     app.requestStop();
     pthread_join(thread, 0);
     pthread_mutex_lock(&app.mu);
-    assert(app.wirelessDone && app.sppLinks == 2 && app.wppReply && app.wppAccepted);
+    assert(app.wirelessDone && app.sppLinks == 4 && app.wppReply && app.wppAccepted);
     pthread_mutex_unlock(&app.mu);
     puts(
-        "PASS actual wireless loop: no handshake during TCP preparation or active session, rearmed after session stop; "
-        "app commands and volume through the peeks; PC socketpair only");
+        "PASS actual wireless loop: no handshake during TCP preparation or active session, rearmed after session stop, "
+        "Bluetooth link closed after a lost wireless session; app commands and volume through the peeks; PC socketpair "
+        "only");
 }
