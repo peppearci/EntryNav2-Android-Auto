@@ -115,6 +115,7 @@ struct Car {
         blankVisible(false);
     }
     void call(bool on) { hold.callChanged(on, now); }
+    bool gear(int value) { return hold.gearChanged(value, now); }
 
     std::string take() {
         std::string all;
@@ -136,7 +137,7 @@ struct Car {
 
 // A connected phone, gear 1, nothing on screen yet; the service already told the call and the gear.
 void connected(Car& c) {
-    c.hold.gearChanged(1);
+    c.gear(1);
     c.service("connected", 42, 0);
     c.poll();
     CHECK_OUT(c, "await, call 0, gear 1");
@@ -369,10 +370,10 @@ void waitsAsideForIdrive() {
         c.polls(10);
         CHECK_OUT(c, "");
         c.call(false);
-        c.hold.gearChanged(evo::app::kReverseGear);
+        c.gear(evo::app::kReverseGear);
         c.polls(10);
         CHECK_OUT(c, "");
-        c.hold.gearChanged(1);
+        c.gear(1);
         c.poll();
         CHECK_OUT(c, "event 51");
         c.menu(true);
@@ -503,7 +504,7 @@ void reverseGear() {
     {  // the camera: Android Auto steps aside by itself, iDrive is not moved
         Car c;
         heldOnBlank(c);
-        c.hold.gearChanged(2);
+        CHECK(c.gear(2));
         c.blankFocus(false);
         c.overlay(0);
         c.poll();
@@ -512,8 +513,13 @@ void reverseGear() {
         CHECK(!c.hold.holding());
         c.blankVisible(true);  // iDrive back on the blank state while in reverse: no show
         CHECK_OUT(c, "");
-        c.hold.gearChanged(1);
+        CHECK(!c.gear(0));
+        CHECK(!c.gear(1));  // Only the latest gear is forwarded after the camera closes.
+        c.polls(3);
+        CHECK_OUT(c, "");
+        CHECK(c.hold.cameraWins());
         c.blankFocus(true);
+        CHECK_OUT(c, "gear 1");
         c.overlay(1);  // reverse ended, Android Auto back over the blank state
         c.poll();
         CHECK_OUT(c, "");
@@ -522,7 +528,7 @@ void reverseGear() {
     {  // in reverse, iDrive away from the blank state: no hard key step aside, no app key hold, no popup peek
         Car c;
         heldOnBlank(c);
-        c.hold.gearChanged(2);
+        c.gear(2);
         c.io.appKey = true;
         c.io.appKeyAt = c.now;
         c.blankLeft();
@@ -533,16 +539,98 @@ void reverseGear() {
     {  // in reverse, the blank state unfocused under Android Auto is not a popup
         Car c;
         heldOnBlank(c);
-        c.hold.gearChanged(2);
+        c.gear(2);
         c.blankFocus(false);
         c.poll();
         CHECK_OUT(c, "");
         CHECK(!c.hold.popupPeek());
         c.polls(4);  // the camera keeps the focus before Android Auto steps aside: no event 52 over it
         CHECK_OUT(c, "");
-        c.hold.gearChanged(1);
-        c.poll();  // out of reverse and still without the focus: handled as an iDrive popup, as anywhere else
-        CHECK_OUT(c, "popup 1");
+        CHECK(!c.gear(1));
+        c.overlay(0);
+        c.poll();
+        CHECK_OUT(c, "");  // Not an OPTION popup even if the overlay falls after the gear change.
+        CHECK(!c.hold.popupPeek());
+    }
+    {  // A second reverse cycle keeps the camera in charge, including across a service restart.
+        Car c;
+        heldOnBlank(c);
+        CHECK(c.gear(2));
+        c.blankLeft();
+        c.overlay(0);
+        c.poll();
+        CHECK(!c.gear(1));
+        CHECK(c.gear(2));
+        CHECK(!c.gear(1));
+        c.service("idle", 0, 0);
+        c.poll();
+        CHECK_OUT(c, "");
+        c.service("running", 43, 0);
+        c.poll();
+        CHECK_OUT(c, "await, call 0, gear 2");
+        c.blankFocus(true);
+        CHECK_OUT(c, "gear 1");
+    }
+    {  // No focus callback: release the gear after the timeout, but keep honoring park assist.
+        Car c;
+        heldOnBlank(c);
+        c.gear(2);
+        c.blankLeft();
+        c.overlay(0);
+        c.poll();
+        c.hold.pdcChanged(evo::app::kParkAssistOn);
+        CHECK_OUT(c, "pdc 1");
+        CHECK(!c.gear(1));
+        c.polls(HoldMachine::kCameraWaitS - 1);
+        CHECK_OUT(c, "");
+        c.poll();
+        CHECK_OUT(c, "gear 1");
+        CHECK(c.hold.cameraWins());
+        c.hold.pdcChanged(0);
+        CHECK_OUT(c, "pdc 0");
+        CHECK(!c.hold.cameraWins());
+    }
+    {  // Returning to our menu releases the gear before showing a waiting session.
+        Car c;
+        heldOnBlank(c);
+        c.gear(2);
+        c.blankLeft();
+        c.overlay(0);
+        c.poll();
+        CHECK(!c.gear(1));
+        c.overlay(2);
+        c.poll();
+        c.menu(false);
+        CHECK_OUT(c, "");
+        c.menu(true);
+        CHECK_OUT(c, "gear 1, show, event 52");
+    }
+    {  // An explicit choice can end the wait even without a focus callback and still override park assist.
+        Car c;
+        heldOnBlank(c);
+        c.gear(2);
+        c.blankLeft();
+        c.overlay(0);
+        c.poll();
+        c.hold.pdcChanged(evo::app::kParkAssistOn);
+        CHECK_OUT(c, "pdc 1");
+        CHECK(!c.gear(1));
+        c.hold.showAndHold("Open row", c.now);
+        CHECK_OUT(c, "gear 1, pdc 0, show, event 52");
+        CHECK(!c.hold.cameraWins());
+    }
+    {  // No handoff when the camera did not interrupt Android Auto.
+        Car c;
+        connected(c);
+        CHECK(c.gear(2));
+        CHECK(c.gear(1));
+    }
+    {  // No handoff when the blank state already has focus.
+        Car c;
+        heldOnBlank(c);
+        CHECK(c.gear(2));
+        CHECK(c.gear(1));
+        CHECK(!c.hold.cameraWins());
     }
 }
 
@@ -823,7 +911,7 @@ void startWhileRunning() {
 void serviceRestart() {
     {  // started in reverse: the call and the gear when it becomes reachable, again when the phone connects
         Car c;
-        c.hold.gearChanged(2);
+        c.gear(2);
         c.service("connecting", -1, 0);  // the supervisor in its preflight
         c.poll();
         CHECK_OUT(c, "");

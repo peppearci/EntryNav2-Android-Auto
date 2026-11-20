@@ -44,7 +44,8 @@
 // - iDrive back on the blank state by itself while Android Auto is minimized (BACK walks its history): "show", like
 //   CarPlay.
 // - Reverse gear: the camera wins. No popup peek, no "show", no hard key step aside, no app key hold, no event 52
-//   for a lost focus.
+//   for a lost focus. After reverse, keep the picture aside until our app regains focus or the driver chooses
+//   Android Auto, with a timeout.
 // - Park assist (sensors.PDCStatus 1, also opened by its button without reverse): the same, the service told
 //   "pdc 1" hides the picture, "pdc 0" when it ends brings it back. It stays on a while after reverse: the
 //   driver choosing Android Auto meanwhile (Open row, entry button) keeps it until park assist changes (#26).
@@ -97,14 +98,16 @@ public:
     static const int kDriveModeQuietS = 15;  // after a driving mode change, its display's focus loss is not fought
     static const int kAppKeyS = 2;           // an app key file this recent means NAV / MEDIA / COM was just pressed
     static const int kCallEndS = 10;         // a call that ended this recently takes iDrive back to the blank state
+    static const int kCameraWaitS = 15;      // fall back if iDrive never restores focus to our blank state
     static const long kMenuRefireMs = 300;   // our menu's focus fires event 52 at most this often
 
     explicit HoldMachine(HoldIo& io);
 
     // ---- the car (CDS properties) ----
     void callChanged(bool inCall, long now);  // after each update of either phone line
-    void gearChanged(int gear);
     void screenChanged(int visibleContext);  // the iDrive screen shown, for the log line when Android Auto steps aside
+    // True if the caller should forward the gear now; otherwise the hold sends it when the camera lets go.
+    bool gearChanged(int gear, long now);
     void pdcChanged(int status);      // sensors.PDCStatus
     void driveModeChanged(long now);  // a real change between two valid driving modes
 
@@ -131,13 +134,14 @@ public:
     // Park assist shows its view, and the driver has not chosen Android Auto over it.
     bool parkAssistOwns() const { return pdc_ == kParkAssistOn && !parkDismissed_; }
     // The reverse camera or the park assist view is up: nothing is done over it.
-    bool cameraWins() const { return gear_ == kReverseGear || parkAssistOwns(); }
+    bool cameraWins() const { return gear_ == kReverseGear || gearPending_ || parkAssistOwns(); }
 
 private:
     void fireHold(const char* why, long now);
     void holdViaMenu(const char* why, long now);
     bool appKeyRecent();
     bool keepForAppKey(const char* why, long now);
+    void flushGear(const char* why);
     void updatePopupPeek(bool covered, long now);
     void beginWait(long now);
     void askWithoutHold(long now);
@@ -181,6 +185,9 @@ private:
     long callEnd_;  // when the last call ended, 0: handled
     int gear_;
     int screen_;  // last visibleContext reported by CDS, -1000 before the first
+    bool reverseHeld_;  // the reverse camera interrupted Android Auto
+    bool gearPending_;  // the service still sees reverse until the camera lets go
+    long gearPendingSince_;
     int pdc_;             // sensors.PDCStatus, kPdcUnknown before the first value
     bool parkDismissed_;  // the driver chose Android Auto during this park assist
     long driveModeAt_;    // last driving mode change, 0: none

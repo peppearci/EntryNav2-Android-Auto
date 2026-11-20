@@ -60,6 +60,7 @@ LIFECYCLE_OBJ = $(PLATFORM_OBJ) platform/evo_touch.o platform/evo_knob.o platfor
 VIDEO_LIBS = -l:libxsvideo.so.4 -l:libdrm_omap.so.1 -l:libdrm.so.2 -lpthread -lrt
 
 .PHONY: all daemon hmiapp dev-tools check style clean verify_core verify_binary verify_wireless verify_repo \
+        test-host-sanitizers test-frame-host test-session-host \
         test-host test-parsers test-spp-host test-kombi-host test-gps-host test-capture-host test-touch-live \
         tests/evo-check-host test-arm-all test-pb-arm-build test-sdr-arm-build test-kombi-arm-build \
         test-session-silence-arm-build test-presentation-arm-build test-wireless-lifecycle-arm-build \
@@ -140,7 +141,7 @@ tests/evo-check-host:
 	    platform/evo_process.cpp $(HOST_DBUS) -o $@
 
 test-host: test-parsers test-spp-host test-kombi-host test-gps-host test-capture-host test-usb-host \
-           tests/evo-check-host test-media-host
+           tests/evo-check-host test-media-host test-frame-host test-session-host
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_evo_elf.cpp -o tests/test-evo-elf
 	if [ -f "$(SPP_FIXTURE_LIB)" ]; then ENTRY_AAD_FIXTURE_LIB="$(SPP_FIXTURE_LIB)" ./tests/test-evo-elf; else ./tests/test-evo-elf; fi
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_spp_snapshot.cpp platform/evo_spp_snapshot.cpp -o tests/test-spp-snapshot
@@ -184,21 +185,29 @@ test-host: test-parsers test-spp-host test-kombi-host test-gps-host test-capture
 	./tests/test-pb
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_volume_pill.cpp -o tests/test-volume-pill
 	./tests/test-volume-pill
-	$(HOST_CXX) $(HOST_FLAGS) tests/test_aa_frame.cpp core/aa_frame.cpp -o tests/test-aa-frame
-	./tests/test-aa-frame
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_aa_messages.cpp core/aa_messages.cpp -o tests/test-aa-messages
 	./tests/test-aa-messages
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_tcp_server.cpp core/tcp_server.cpp -o tests/test-tcp-server
 	./tests/test-tcp-server
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_wifi_link.cpp platform/wifi_link.cpp -o tests/test-wifi-link
 	./tests/test-wifi-link
-	$(HOST_CXX) $(HOST_FLAGS) $(HOST_SSL_FLAGS) -Icore/include tests/test_session_phone.cpp $(SESSION_SRC) -lssl -lcrypto \
-	    -o tests/test-session-phone
-	./tests/test-session-phone tests/fixtures/session_phone.golden
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_wireless_phone.cpp core/wireless_setup.cpp -o tests/test-wireless-phone
 	./tests/test-wireless-phone tests/fixtures/wireless_phone.golden
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_wireless_listen.cpp core/wireless_setup.cpp -o tests/test-wireless-listen
 	./tests/test-wireless-listen
+
+test-host-sanitizers:
+	ASAN_OPTIONS=detect_leaks=1 $(MAKE) test-frame-host test-session-host \
+	    HOST_FLAGS="$(HOST_FLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer"
+
+test-frame-host:
+	$(HOST_CXX) $(HOST_FLAGS) tests/test_aa_frame.cpp core/aa_frame.cpp -o tests/test-aa-frame
+	./tests/test-aa-frame
+
+test-session-host:
+	$(HOST_CXX) $(HOST_FLAGS) $(HOST_SSL_FLAGS) -Icore/include tests/test_session_phone.cpp $(SESSION_SRC) -lssl -lcrypto \
+	    -o tests/test-session-phone
+	./tests/test-session-phone tests/fixtures/session_phone.golden
 
 test-parsers:
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_parsers.cpp platform/alps_spp_codec.cpp platform/evo_ap_config.cpp -o tests/test-parsers

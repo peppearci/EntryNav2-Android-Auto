@@ -1,7 +1,8 @@
 # Contribuer
 
 *Contributions in English are welcome too. The project documentation is in French; code, comments and commit
-scopes are in English.*
+scopes are in English. Pull requests are squash-merged: the pull request title (Conventional Commits) becomes the
+commit title, in French; an English title is translated at merge time. No need to rebase or reword your commits.*
 
 Merci de votre intérêt ! Le plus utile, par ordre :
 
@@ -59,6 +60,7 @@ fermeture.
 | Niveau | Commande | Il faut |
 |---|---|---|
 | PC, comme la CI | `make check` | `g++`, `libssl-dev`, `libdbus-1-dev`, `protobuf-compiler`, `python3-protobuf`, clang-format 18.1.8 et ruff 0.6.9 (`pip install -r requirements-dev.txt`) |
+| PC, mémoire et UB | `make test-host-sanitizers` | `g++` avec ASan/UBSan, `libssl-dev` ; tests des trames et de la session, détection des fuites active |
 | ARM | `bash toolchain/tc.sh make -j4 all hmiapp test-arm-all` | Docker, la copie du système de la voiture |
 | ARM sous QEMU | `python3 -I tests/run_qemu.py` | `qemu-user`, la copie du système |
 | Programmes validés | `make verify_binary verify_wireless` | idem |
@@ -88,6 +90,9 @@ l'iDrive en français. Chaque fichier source commence par :
   français, à l'impératif ou au constat, 72 caractères au plus. Types : `feat`, `fix`, `refactor`, `perf`, `test`,
   `docs`, `build`, `ci`, `chore`. Le corps explique pourquoi.
 - Un commit = un changement cohérent qui compile et passe `make check`.
+- Les demandes de fusion entrent dans `main` par squash : un seul commit, au titre de la demande suivi de `(#N)`.
+  Ce titre suit donc les règles ci-dessus (la CI le vérifie) ; un titre en anglais est mis en français à la fusion.
+  Pas besoin de rebaser ni de réécrire ses commits.
 - Les versions suivent [SemVer](https://semver.org/lang/fr/) et sont marquées par une étiquette `vX.Y.Z`.
 
 ## Publier une version

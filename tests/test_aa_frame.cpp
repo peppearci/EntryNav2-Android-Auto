@@ -67,11 +67,13 @@ void reassembly() {
     CHECK(a.add(header(8, aa::frame::kLast, 30), Bytes({8}), m) == aa::MessageAssembler::kComplete);
     CHECK(m == Bytes({7, 8}));
 
-    // A LAST alone is dropped; MIDDLE fragments before it count as a start.
+    // Neither continuation starts a message, even if another channel has a FIRST in flight.
+    CHECK(a.add(header(8, aa::frame::kFirst, 30, 2), Bytes({7}), m) == aa::MessageAssembler::kPending);
     CHECK(a.add(header(6, aa::frame::kLast, 30), Bytes({1}), m) == aa::MessageAssembler::kNoFirst);
-    CHECK(a.add(header(6, aa::frame::kMiddle, 30), Bytes({1}), m) == aa::MessageAssembler::kPending);
-    CHECK(a.add(header(6, aa::frame::kLast, 30), Bytes({2}), m) == aa::MessageAssembler::kComplete);
-    CHECK(m == Bytes({1, 2}));
+    CHECK(a.add(header(6, aa::frame::kMiddle, 30), Bytes({1}), m) == aa::MessageAssembler::kNoFirst);
+    CHECK(a.add(header(6, aa::frame::kLast, 30), Bytes({2}), m) == aa::MessageAssembler::kNoFirst);
+    CHECK(a.add(header(8, aa::frame::kLast, 30), Bytes({8}), m) == aa::MessageAssembler::kComplete);
+    CHECK(m == Bytes({7, 8}));
 
     // Announced more than the wire brought: dropped. Announced 0: no check.
     CHECK(a.add(header(6, aa::frame::kFirst, 10, 100), Bytes({1}), m) == aa::MessageAssembler::kPending);
@@ -103,6 +105,6 @@ void reassembly() {
 int main() {
     headers();
     reassembly();
-    puts("PASS frames: header both ways, 64 KiB limit, reassembly per channel, LAST alone, short of size, 8 MiB bound");
+    puts("PASS frames: header both ways, 64 KiB limit, reassembly per channel, orphan fragments, size checks");
     return 0;
 }

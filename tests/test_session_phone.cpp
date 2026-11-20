@@ -1100,6 +1100,76 @@ const Scenario kScenarios[] = {{"full session", fullSession},
                                {"cut headers", cutHeaders},
                                {"lifecycle", lifecycle}};
 
+struct StreamFrames {
+    size_t received = 0;
+    bool valid = true;
+};
+
+void checkStreamFrame(uint32_t, const uint8_t* data, size_t len, uint64_t pts, void* user) {
+    auto& frames = *static_cast<StreamFrames*>(user);
+    frames.valid = frames.valid && len == pts && len != 0 && data[0] == 0x65 && data[len - 1] == 0x65;
+    ++frames.received;
+}
+
+void streamFrame(Phone& phone, size_t size, bool fragmented, const Bytes& chunk) {
+    const Bytes header =
+        bytes({0, 0, 0, 0, 0, 0, static_cast<int>((size >> 24) & 0xff), static_cast<int>((size >> 16) & 0xff),
+               static_cast<int>((size >> 8) & 0xff), static_cast<int>(size & 0xff)});
+    if (!fragmented) {
+        phone.send(6, kSealed, header + chunk);
+        return;
+    }
+    phone.piece(6, 0x09, header + chunk, static_cast<uint32_t>(header.size() + size));
+    for (size_t left = size - chunk.size(); left > chunk.size(); left -= chunk.size()) {
+        phone.piece(6, 0x08, chunk);
+    }
+    phone.piece(6, 0x0a, chunk);
+}
+
+bool streamVideo(long count) {
+    StreamFrames frames;
+    aa::AASession session;
+    watch(session, true);
+    session.setVideoFrameCallback(checkStreamFrame, &frames);
+    int fds[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) != 0) {
+        perror("oversized video socketpair");
+        return false;
+    }
+    if (!session.start(fds[0])) {
+        close(fds[1]);
+        return false;
+    }
+    std::vector<std::string> log;
+    Phone phone(fds[1], log);
+    phone.handshake();
+    phone.discover();
+    phone.send(6, kSealed, bytes({0x80, 0x00}));
+    phone.send(6, kSealed, bytes({0x80, 0x01, 0x08, 0x03}));
+    phone.settle();
+    phone.setQuiet(true);
+    const Bytes chunk(8192, 0x65);
+    for (long i = 0; i < count && !phone.lost(); ++i) {
+        const bool fragmented = i % 4 == 0;
+        const size_t size = fragmented ? 129 * chunk.size() : chunk.size();
+        streamFrame(phone, size, fragmented, chunk);
+        if (i == 0) {
+            phone.piece(6, 0x09, chunk, 3 * chunk.size());
+            phone.piece(6, 0x0a, chunk);  // Too short: the announced size is larger than these two TLS records.
+        }
+        phone.settle();
+        log.clear();
+    }
+    const bool exchanged = !phone.lost();
+    phone.leave();
+    const bool ended = waitEnded(session);
+    session.stop();
+    close(fds[1]);
+    takeEvents();
+    return exchanged && !log.empty() && log.back() == "hu <closed>" && ended && frames.valid &&
+           frames.received == static_cast<size_t>(count);
+}
+
 void timedOut(int) {
     static const char msg[] = "FAIL test-session-phone: no progress\n";
     ssize_t w = write(2, msg, sizeof(msg) - 1);
@@ -1173,6 +1243,7 @@ int main(int argc, char** argv) {
     takeEvents();
     const std::string keyframe = writing ? std::string() : keyframeAfterLoss();
     takeEvents();
+    const bool oversized = writing || streamVideo(2);
     fflush(stdout);
     dup2(console, 1);
     close(sink);
@@ -1222,5 +1293,10 @@ int main(int argc, char** argv) {
         return 1;
     }
     puts("PASS session, keyframe after a lost frame: focus off and on, not in the first 5 s, once in 10 s");
+    if (!oversized) {
+        fprintf(stderr, "FAIL session, oversized fragmented video followed by small video\n");
+        return 1;
+    }
+    puts("PASS session, oversized fragmented video followed by small video");
     return 0;
 }
