@@ -8,6 +8,19 @@
 #include "ap_uapsd.hpp"
 #include "wireless_setup.hpp"
 namespace evo {
+// The content of the Wi-Fi channel file (kWifiChannel): a channel from 1 to 11, 0 when empty or anything else.
+inline int parseWifiChannel(const std::string& text) {
+    int channel = 0;
+    for (size_t i = 0; i < text.size(); ++i) {
+        const char c = text[i];
+        if (c >= '0' && c <= '9' && channel < 100) {
+            channel = channel * 10 + (c - '0');
+        } else if (c != '\n' && c != '\r' && c != ' ') {
+            return 0;
+        }
+    }
+    return channel >= 1 && channel <= 11 ? channel : 0;
+}
 // Pure parser for hostapd get_config / ap.conf. Does not log credentials.
 bool parseHostapdConfig(const std::string& text, aa::ApInfo& out);
 // Read-only hostapd query (bounded child), then ap.conf; IP/MAC from wlan0 ioctls.
@@ -15,5 +28,7 @@ bool loadAccessPoint(aa::ApInfo& out, std::string& source);
 // No U-APSD offered to the next phone that joins (ap_uapsd.hpp): hostapd_cli, bounded children. Not logged here.
 // stopping(user): true once the service is asked to stop; no hostapd_cli command starts after that.
 UapsdOffer withdrawAccessPointUapsd(bool (*stopping)(void*), void* user);
+// Moves the running access point to a 2.4 GHz channel (hostapd CSA, bounded child); false when hostapd refuses.
+bool setAccessPointChannel(int channel);
 }  // namespace evo
 #endif

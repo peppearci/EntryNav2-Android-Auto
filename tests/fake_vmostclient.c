@@ -24,7 +24,8 @@
  *   hangup  (the default) it closes its end: the descriptor hangs up;
  *   broken  the connection breaks while a message comes: the descriptor is readable, the read fails;
  *   deaf    its socket takes nothing more: the next write fails before the descriptor says anything.
- * Built with FAKE_VMOST_NO_CONNECTED: a library without the 'connected' symbol, otherwise the same. */
+ * Built with FAKE_VMOST_NO_CONNECTED: a library without the 'connected' symbol, otherwise the same.
+ * ConnectionMaster route requests (tests/test_audio_route.cpp): see $FAKE_ROUTE_REFUSALS below. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,6 +67,7 @@ struct queued {
 };
 static struct queued g_q[16];
 static int g_nq;
+static int g_refused; /* route requests refused since the last connect */
 
 static void logLine(const char* text) {
     const char* p = getenv("FAKE_VMOST_LOG");
@@ -152,6 +154,7 @@ int vmostConnect(cb_t cb, void* user, int flags) {
     g_cb = cb;
     g_user = user;
     g_nq = 0;
+    g_refused = 0;
     g_fd = p[0];
     g_daemon = p[1];
     g_queue = 1;
@@ -244,7 +247,15 @@ int vmostMostMsgSend(void* msg) {
     if (getenv("FAKE_WLAN_SILENT")) {
         return 0;
     }
-    if (m->fblock == 0xA0 && m->inst == 1 && m->fkt == 0xC10 && m->op == 1) {
+    if (m->fblock == 0x03 && m->inst == 0 && (m->fkt == 0x053 || m->fkt == 0x054) && m->op == 6 && m->len == 4) {
+        /* ConnectionMaster: ErrorAck (op 9) to the first $FAKE_ROUTE_REFUSALS requests, then ResultAck (op 0xD). */
+        const char* r = getenv("FAKE_ROUTE_REFUSALS");
+        const int ok = g_refused >= (r ? atoi(r) : 0);
+        if (!ok) {
+            ++g_refused;
+        }
+        enqueue(0x03, 0, m->fkt, ok ? 0xD : 0x9, m->data, 2);
+    } else if (m->fblock == 0xA0 && m->inst == 1 && m->fkt == 0xC10 && m->op == 1) {
         const char* s = getenv("FAKE_WLAN_STATE");
         uint8_t st = (uint8_t)(s ? atoi(s) : 0);
         enqueue(0xA0, 1, 0xC10, 0xC, &st, 1);

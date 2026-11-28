@@ -43,6 +43,9 @@
 //   about 20 times a drive). Event 52 at the first poll, no step aside; at most 4 times in 10 s, past that the hard
 //   key step aside above. Only that screen, seen in a car's log: any other iDrive screen without a key (a warning,
 //   BMW navigation) still makes Android Auto step aside.
+// - The same for a screen a touch opens (kTouchScreens): iDrive reads the touchscreen too, under Android Auto. With a
+//   finger sent to the phone in the last 3 s (the service's file) and no key left to iDrive in the last 6 s, event 52
+//   at the first poll. No limit of its own: each one needs a new touch.
 // - NAV, MEDIA or COM opened an Android Auto app, or BACK / tilt left went to it (the service wrote its app key file
 //   within the last 2 s): iDrive switched to its own screen underneath, or went back to the one NAV / MEDIA / COM
 //   opened, event 52 at once so the knob does not act on that hidden screen.
@@ -91,6 +94,8 @@ const int kScreenUnknown = -1;   // hmi.graphicalContext: no screen since the bl
 // raises by itself when the tuner follows the station (#138, X1 F48; the same number on NBT Evo). Its saved stations
 // page (1325 on NBT Evo) has not been seen on EntryNav2.
 const int kRadioStationScreen = 523;
+// The screens a touch under Android Auto opened (F48, 26/11): main menu, media / radio, communication, DAB.
+const int kTouchScreens[] = {3, 20, 30, 883};
 
 // What the machine does and reads: the app (iDrive, the service's control port, files, app.log), a recorder in tests.
 class HoldIo {
@@ -108,6 +113,7 @@ public:
     virtual bool appKeyAge(long* seconds) = 0;
     virtual void removeAppKey() = 0;
     virtual bool hardKeyAge(long* seconds) = 0;  // the same for the file of the last key left to iDrive
+    virtual bool touchAge(long* seconds) = 0;    // the same for the file of the last touch sent to the phone
 
 protected:
     // Never deleted through this interface: no virtual destructor, so the app's instance has nothing to run at exit
@@ -119,6 +125,7 @@ class HoldMachine {
 public:
     static const int kMaxHoldTries = 8;      // events 52 until the blank state shows again
     static const int kMenuRouteTries = 3;    // events 51 to reach it through our menu
+    static const int kUnheldPopupTries = 3;  // own-popup routes while unheld
     static const int kDriveModeQuietS = 15;  // after a driving mode change, its display's focus loss is not fought
     static const int kAppKeyS = 2;           // an app key file this recent means NAV / MEDIA / COM was just pressed
     static const int kCallEndS = 10;         // a call that ended this recently takes iDrive back to the blank state
@@ -127,6 +134,7 @@ public:
     static const int kHardKeyS = 6;          // a key left to iDrive this recently explains iDrive's radio page
     static const int kRadioBacksMax = 4;     // radio pages won back per window; past that, the hard key step aside
     static const int kRadioWindowS = 10;
+    static const int kTouchS = 3;            // a touch this recent explains one of kTouchScreens; not counted
 
     explicit HoldMachine(HoldIo& io);
 
@@ -170,7 +178,7 @@ private:
     void dropOwnPopup();
     bool appKeyRecent();
     bool keepForAppKey(const char* why, long now);
-    bool winBackRadioPage(long now);
+    bool winBack(long now);
     void backFromOptionPanel();
     void flushGear(const char* why);
     void leaveParkAssist(const char* why);
@@ -212,6 +220,7 @@ private:
     long waitSince_;   // when the wait began (a call or the reverse gear start it again)
     long askedAt_;     // last event 51 fired for it, 0: none yet
     int asks_;         // events 51 fired for it
+    int unheldPopups_;  // own-popup routes tried while unheld
 
     // The car
     bool inCall_;

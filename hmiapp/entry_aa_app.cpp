@@ -34,6 +34,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <atomic>
+
 #include "../platform/log_copy.hpp"
 #include "../platform/media_recall.hpp"
 #include "../platform/service_contract.hpp"
@@ -41,6 +43,7 @@
 #include "app_log.hpp"
 #include "bmw_framework.hpp"
 #include "car_signals.hpp"
+#include "carplay_tab.hpp"
 #include "hold_machine.hpp"
 #include "idrive_coding.hpp"
 #include "mono_clock.hpp"
@@ -83,6 +86,7 @@ public:
     bool appKeyAge(long* seconds) override { return fileAge(contract::kAppKeyFile, seconds); }
     void removeAppKey() override { unlink(contract::kAppKeyFile); }
     bool hardKeyAge(long* seconds) override { return fileAge(contract::kHardKeyFile, seconds); }
+    bool touchAge(long* seconds) override { return fileAge(contract::kTouchFile, seconds); }
 
 private:
     static bool fileAge(const char* path, long* seconds) {
@@ -491,6 +495,35 @@ void pollUpdate(bmw::PluginApp* app, const ServiceState& d, long now) {
 }
 
 // ---- the status poll: service state -> entry text, menu rows, hold, stop --------------------------------------------
+// The CarPlay tab (carplay_tab.hpp): selected on HmiMain3D's thread, shown from the app's own, as everything else.
+AppRunnable g_tabRunnable;
+std::atomic<bool> g_tabPosted(false);
+void tabRun(void*) {
+    g_tabPosted = false;
+    try {
+        if (g_runApp && readyToShow(readServiceState())) {
+            g_hold.showAndHold("CarPlay tab", monoSeconds());
+        }
+    } catch (abi::__forced_unwind&) {
+        throw;  // a thread being cancelled
+    } catch (...) {
+        alog("exception in tabRun");
+    }
+}
+void onTabSelected() {
+    bmw::PluginApp* app = g_runApp;
+    if (app && !g_tabPosted.exchange(true)) {
+        try {
+            postRunnable(app, g_tabRunnable, 0);
+        } catch (abi::__forced_unwind&) {
+            throw;  // a thread being cancelled
+        } catch (...) {
+            g_tabPosted = false;
+            alog("exception posting tabRun");
+        }
+    }
+}
+
 AppRunnable g_statusRunnable;
 unsigned g_shownText = kTextDefault;
 unsigned g_shownRow = kTextStart;
@@ -534,6 +567,7 @@ void statusRun(void*) {
             g_shownText = want;
         }
         setConnectingAnimation(app, connecting);
+        carPlayTabPoll(readyToShow(d));
         // Menu: "Stop Android Auto" only while it runs; the call state is (re)sent when the phone connects.
         const int stopWanted = d.pid != 0 ? 1 : 0;
         if (stopWanted != g_stopShown) {
@@ -619,6 +653,7 @@ bool appOnInit(bmw::PluginApp* self) {
         makeRunnable(g_subRunnable, &subscribeRun);
         postRunnable(self, g_subRunnable, 1500);
         makeRunnable(g_statusRunnable, &statusRun);
+        makeRunnable(g_tabRunnable, &tabRun);
         postRunnable(self, g_statusRunnable, 2000);
         return ok;
     } catch (abi::__forced_unwind&) {
@@ -644,6 +679,7 @@ void appOnFinalize(bmw::PluginApp* self) {
     try {
         alog("onFinalize");
         g_runApp = nullptr;
+        carPlayTabFinalize();
         detachCarSignals();
         self->onFinalize();
     } catch (abi::__forced_unwind&) {
@@ -677,6 +713,7 @@ bmw::PluginApp* createApp(bmw::IDispatcher& dispatcher, const char* name, const 
             return nullptr;
         }
         g_app = app;
+        captureCarPlayTab(&onTabSelected);  // createApp runs on HmiMain3D's thread
         alog("create: app %p (PluginApp vtable %p)", static_cast<void*>(app), base);
         return app;
     } catch (abi::__forced_unwind&) {

@@ -12,8 +12,11 @@ Le service ne lit aucun réglage dans son environnement : ses valeurs sont fixes
 |---|---|
 | `vehicle` | La voiture annoncée au téléphone, une ligne par réglage : `model=…`, `year=…`, `side=left` ou `side=right` (côté du conducteur : Android Auto dispose son écran pour ce côté), `fuel=petrol` ou `fuel=diesel`. Sans ce fichier ou sans une ligne : la série codée dans la voiture (« G20 », « F56 » ; « iDrive » si le codage ne la dit pas), 2019, essence, et le côté codé dans la voiture (conduite à gauche s'il est illisible) ; une ligne `side=` l'emporte sur le codage. La marque (BMW ou MINI) vient du codage de l'iDrive |
 | `usb` | Présent : Android Auto par câble USB au lieu du sans-fil (case *Câble USB au lieu du sans-fil* du menu). Vide, ou le nom de la seule prise à surveiller : voir [USB](USB.md) |
+| `wifi-channel` | Un canal de 1 à 11 (`echo 1 > /var/local/data/AA/wifi-channel`) : au démarrage du service, le Wi-Fi de la voiture passe sur ce canal (hostapd `chan_switch`). Utile quand un voisin sur le canal 11 ou 10 coupe le téléphone par moments. Absent : le canal de la voiture ne change pas. Revient à celui de BMW au redémarrage de l'unité |
 | `autostart` | Présent : Android Auto démarre avec l'iDrive (case *Démarrage automatique* du menu) |
 | `entry-direct` | Présent : la ligne *Android Auto* de l'iDrive ouvre directement Android Auto, au lieu de son menu |
+| `carplay-tab` | Présent : l'onglet CarPlay du menu principal mène à Android Auto quand il est prêt. Absent (défaut) : aucune fonction d'iDrive n'est appelée ni remplacée pour cela. Pris en compte au redémarrage de l'unité |
+| `video-60fps` | Présent : 60 images par seconde demandées au téléphone, sans espacement des images |
 | `kombi-off` | Présent : rien n'est envoyé au compteur ni à la tête haute (Ethernet des Série G ou MOST des Série F) |
 | `kombi-most-layout` | Écrit par le service sur une Série F au compteur MOST : l'adresse du compteur et les champs que la navigation BMW y utilise, appris pendant un guidage ([compatibilité](COMPATIBILITE.md#flèches-sur-le-compteur-des-série-f)). Supprimé, il est appris de nouveau au prochain guidage BMW ; abîmé, il est ignoré puis réécrit |
 | `kombi-single-maneuver` | Présent au démarrage : graphe limité à la prochaine manœuvre, pour un compteur qui refuse le trajet complet (voir ci-dessous). Sans ce fichier : graphe historique |

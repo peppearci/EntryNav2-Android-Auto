@@ -55,6 +55,9 @@ bool declareTouchscreen(std::vector<uint8_t>& sdr, const DisplayPlan& display = 
 // No media sink (channel 9): media plays over the car's Bluetooth. The phone refuses the session without an audio
 // sink or without the microphone, so 8 (speech and guidance) and 14 stay. Returns the descriptors removed.
 int removeMediaChannel(std::vector<uint8_t>& sdr);
+// Only the main display (channel 6) is described: the template's two other video sinks (channels 2 and 4) are
+// removed. Returns the descriptors removed.
+int removeExtraVideoSinks(std::vector<uint8_t>& sdr);
 // The channel 8 sink as SYSTEM_AUDIO instead of GUIDANCE: with neither a guidance nor a media sink the phone mixes
 // the prompts into its own audio, which plays over Bluetooth. Returns the fields changed (0 or 1).
 int retypeGuidanceSink(std::vector<uint8_t>& sdr);
@@ -70,12 +73,13 @@ void setDiscoveryTrim(DiscoveryTrim trim);
 // and the canvas chosen for it; the reference car's when not given. make: the car's and the head unit's maker as
 // iDrive is coded ("MINI"); null keeps "BMW". codedSide: the driver's side as the car is coded, used unless the
 // vehicle file says "side=". codedModel: the car's series as iDrive is coded ("G20"), used unless the vehicle file
-// says "model="; null or invalid keeps "iDrive".
+// says "model="; null or invalid keeps "iDrive". wifiAudio: keep the media and guidance sinks, the car plays their
+// sound; else media goes over Bluetooth.
 std::vector<uint8_t> buildCarServiceDiscovery(const uint8_t* base, size_t baseLen, const char* vehicleFile,
                                               const char* softwareVersion, const DisplayPlan& display = DisplayPlan(),
                                               const char* make = nullptr,
                                               DriverPosition codedSide = DriverPosition::kLeft,
-                                              const char* codedModel = nullptr);
+                                              const char* codedModel = nullptr, bool wifiAudio = false);
 
 }  // namespace aa
 

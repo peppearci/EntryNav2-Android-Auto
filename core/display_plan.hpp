@@ -23,6 +23,7 @@ struct DisplayPlan {
     uint32_t canvasWidth, canvasHeight;  // what the phone streams
     uint32_t resolution;                 // the canvas as the protocol numbers it: 1, 2 or 3
     uint32_t hiddenSide;                 // panel columns hidden on each side by the surround
+    bool fps60;                          // ask the phone for 60 frames a second instead of the template's 30
     // The reference car.
     DisplayPlan()
         : width(1280),
@@ -32,7 +33,8 @@ struct DisplayPlan {
           canvasWidth(1280),
           canvasHeight(720),
           resolution(2),
-          hiddenSide(0) {}
+          hiddenSide(0),
+          fps60(false) {}
     uint32_t bottomInset() const { return canvasHeight - shownHeight; }
     uint32_t leftInset() const { return hiddenSide; }
     uint32_t rightInset() const { return canvasWidth - shownWidth + hiddenSide; }

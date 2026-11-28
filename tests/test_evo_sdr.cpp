@@ -156,7 +156,7 @@ static bool service(const std::vector<uint8_t>& sdr, uint64_t channel, std::vect
 // What a description tells the phone about the picture: canvas number, the two margins, the insets, the
 // touchscreen's size.
 struct Shown {
-    uint64_t resolution, marginW, marginH, top, bottom, left, right, touchW, touchH, density;
+    uint64_t resolution, fps, marginW, marginH, top, bottom, left, right, touchW, touchH, density;
 };
 static bool shown(const std::vector<uint8_t>& sdr, Shown& s) {
     std::vector<uint8_t> video, sink, config, ui, insets, input, source, touch;
@@ -165,6 +165,7 @@ static bool shown(const std::vector<uint8_t>& sdr, Shown& s) {
         return false;
     }
     s.resolution = value(config, 1);
+    s.fps = value(config, 2);
     s.marginW = value(config, 3);
     s.marginH = value(config, 4);
     s.density = value(config, 5);
@@ -247,6 +248,12 @@ int main() {
     CHECK(values(source, 3) == std::vector<uint64_t>({1, 10}) && values(source, 4) == std::vector<uint64_t>({8}));
     const std::vector<uint8_t> leftPetrol =
         aa::buildCarServiceDiscovery(kDhuSdpProtobuf, kDhuSdpProtobufLen, nullptr, nullptr);
+    {  // main display only: the template's video sinks 2 and 4 and their input sources 3 and 5 are gone
+        std::vector<uint64_t> unused;
+        std::map<uint64_t, std::vector<uint8_t>> built = channels(leftPetrol, unused), tmpl = channels(orig, unused);
+        CHECK(tmpl.count(2) && tmpl.count(3) && tmpl.count(4) && tmpl.count(5) && tmpl.count(6));
+        CHECK(!built.count(2) && !built.count(3) && !built.count(4) && !built.count(5) && built.count(6) && built.count(1));
+    }
     CHECK(values(leftPetrol, 6) == std::vector<uint64_t>({0}));
     CHECK(service(leftPetrol, 1, sensorService) && sub(sensorService, 2, source));
     CHECK(values(source, 3) == std::vector<uint64_t>({1}) && values(source, 4).empty());
@@ -362,7 +369,14 @@ int main() {
     const std::vector<uint8_t> forSmall =
         aa::buildCarServiceDiscovery(kDhuSdpProtobuf, kDhuSdpProtobufLen, nullptr, nullptr, small);
     CHECK(shown(forSmall, s) && s.resolution == 1 && s.marginW == 0 && s.marginH == 0 && s.density == 140 &&
-          s.top == 0 && s.bottom == 0 && s.left == 0 && s.right == 0 && s.touchW == 800 && s.touchH == 480);
+          s.top == 0 && s.bottom == 0 && s.left == 0 && s.right == 0 && s.touchW == 800 && s.touchH == 480 &&
+          s.fps == 2);
+    // The same panel at 60 fps: only the frame rate changes.
+    aa::DisplayPlan small60 = small;
+    small60.fps60 = true;
+    Shown s60;
+    CHECK(shown(aa::buildCarServiceDiscovery(kDhuSdpProtobuf, kDhuSdpProtobufLen, nullptr, nullptr, small60), s60) &&
+          s60.fps == 1 && s60.resolution == 1 && s60.density == 140 && s60.touchW == 800 && s60.touchH == 480);
     // A 1440x540 panel: the large canvas, its UI kept in the top-left 1440x540.
     const std::vector<uint8_t> forWide =
         aa::buildCarServiceDiscovery(kDhuSdpProtobuf, kDhuSdpProtobufLen, nullptr, nullptr, wide);

@@ -20,6 +20,7 @@
 #include "alps_spp.hpp"
 #include "evo_control.hpp"
 #include "evo_knob.hpp"
+#include "evo_audio.hpp"
 #include "evo_mic.hpp"
 #include "evo_pill.hpp"
 #include "evo_video.hpp"
@@ -29,6 +30,7 @@
 #include "peek_timing.hpp"
 #include "tcp_server.hpp"
 #include "usb_loop.hpp"
+#include "video_pace.hpp"
 #include "volume_state.hpp"
 #include "wifi_link.hpp"
 #include "wireless_loop.hpp"
@@ -107,6 +109,7 @@ public:
     AlpsSppLink bt;
     EvoVideo video;
     aa::AASession session;
+    EvoAudio audio;                 // sound over Wi-Fi, when its settings file exists (stopped after the session)
     EvoMic mic;                     // car mic for the Assistant (stopped before the session it posts to)
     evo::kombi::MostHud kombiMost;  // F-series cluster over MOST, on the controller reader (destroyed after kombi)
     evo::kombi::Arrows kombi;       // AA turn-by-turn -> HUD/cluster arrows, SOME/IP 0xB006 to the KOMBI
@@ -136,6 +139,7 @@ public:
     WifiLinkLog wifiLink;  // the Wi-Fi link's quality, logged while a wireless session runs
     unsigned sppLinks, tcpLinks, usbLinks;
     std::atomic<unsigned> videoFrames;  // counted on the session thread without mu
+    VideoPace videoPace;                // the [Video] line every 10 s of a session
     bool wppReply, wppAccepted;
     bool projectionOverUsb;  // the last session came over USB (its loss is not the wireless loop's business)
     unsigned lostWireless;   // wireless sessions ended without ByeBye

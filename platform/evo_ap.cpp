@@ -14,6 +14,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <string>
+#include <vector>
 
 #include "atomic_file.hpp"
 #include "evo_log.hpp"
@@ -68,6 +70,19 @@ UapsdOffer withdrawAccessPointUapsd(bool (*stopping)(void*), void* user) {
         }
     }
     return offer;
+}
+bool setAccessPointChannel(int channel) {
+    std::vector<std::string> args;
+    args.push_back("-p");
+    args.push_back("/var/run/hostapd");
+    args.push_back("-i");
+    args.push_back("wlan0");
+    args.push_back("chan_switch");
+    args.push_back("5");  // beacons before the switch: the phone follows it
+    args.push_back(std::to_string(2407 + 5 * channel));
+    args.push_back("ht");
+    std::string out;
+    return runCommand("/usr/sbin/hostapd_cli", args, out) && out.find("OK") != std::string::npos;
 }
 static bool macAddress(const std::string& value) {
     if (value.size() != 17) {

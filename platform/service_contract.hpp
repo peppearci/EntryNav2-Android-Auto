@@ -24,6 +24,9 @@ constexpr char kMaintenance[] = "/var/local/data/AA/maintenance";     // present
 constexpr char kKombiOff[] = "/var/local/data/AA/kombi-off";          // present: nothing is sent to the cluster
 constexpr char kKombiShown[] = "/var/local/data/AA/kombi-nav.shown";  // an arrow may still be on the cluster
 constexpr char kPhoneGps[] = "/var/local/data/AA/gps-telephone";      // present: the phone keeps its own GPS
+constexpr char kAudioWifi[] = "/var/local/data/AA/audio-wifi";        // present: sound over Wi-Fi (evo_audio.hpp)
+constexpr char kCarPlayTab[] = "/var/local/data/AA/carplay-tab";    // present: the CarPlay tab (hmiapp)
+constexpr char kVideo60[] = "/var/local/data/AA/video-60fps";        // present: the phone is asked for 60 fps
 constexpr char kVehicle[] = "/var/local/data/AA/vehicle";             // model= year= side= fuel=, told to the phone
 // An Android Auto picture may still be on the cluster of an F-series car (over MOST, kombi_most.hpp).
 constexpr char kKombiMostShown[] = "/var/local/data/AA/kombi-most.shown";
@@ -33,6 +36,8 @@ constexpr char kKombiMostLayout[] = "/var/local/data/AA/kombi-most-layout";
 constexpr char kKombiSingle[] = "/var/local/data/AA/kombi-single-maneuver";
 // Present: Android Auto over a USB cable instead of wireless. Empty, or the one USB port to use ("1-1").
 constexpr char kUsb[] = "/var/local/data/AA/usb";
+// Present with a channel from 1 to 11: the service moves the car's Wi-Fi there (a neighbour on channel 10 stalled the phone).
+constexpr char kWifiChannel[] = "/var/local/data/AA/wifi-channel";
 constexpr char kAppLog[] = "/var/local/data/AA/app.log";
 constexpr char kAppLogOld[] = "/var/local/data/AA/app.old.log";
 // The service's log in the maintenance profile, kept across the car's sleep (kept_log.hpp).
@@ -55,6 +60,7 @@ constexpr char kServiceLog[] = "/tmp/entry-aa-service.log";
 constexpr char kStateFile[] = "/tmp/entry-aad-state";             // "state pid overlay", written by the service
 constexpr char kAppKeyFile[] = "/tmp/entry-aad-appkey";           // NAV/MEDIA/COM/BACK kept Android Auto up
 constexpr char kHardKeyFile[] = "/tmp/entry-aad-hardkey";         // a key left to iDrive: its time is the file's
+constexpr char kTouchFile[] = "/tmp/entry-aad-touch";             // a finger down or up sent to the phone
 constexpr char kDayNightFile[] = "/tmp/entry-aad-daynight";       // day or night, written by the app
 constexpr char kControllerFile[] = "/tmp/entry-aad-controller";   // the car's key coding, written by the app
 constexpr char kBrandFile[] = "/tmp/entry-aad-brand";             // "BMW" or "MINI", as iDrive is coded

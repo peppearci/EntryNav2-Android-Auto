@@ -54,6 +54,7 @@ ServiceApp::~ServiceApp() {
     mic.stop();
     kombi.stop();
     session.stop();
+    audio.stop();  // after the session, whose thread hands it the phone's sound
     video.stop();
     bt.stop();
     pthread_mutex_destroy(&mu);
@@ -174,7 +175,10 @@ void ServiceApp::frame(uint32_t, const uint8_t* data, size_t len, uint64_t pts, 
         // Phone frames never wait for mu: the main loop holds it while LayerManagerControl runs (show/hide,
         // opacity), which would stall the picture.
         ++a->videoFrames;
+        const uint32_t startMs = monoMs();
         const FrameFate fate = a->video.postVideoFrame(data, len, pts);
+        const uint32_t doneMs = monoMs();
+        a->videoPace.frame(doneMs, static_cast<unsigned>(len), doneMs - startMs, fate == FrameFate::kLost, pts);
         if (fate == FrameFate::kLost) {
             a->session.postKeyframeRequest();  // the session decides whether and when to ask the phone
         } else if (fate == FrameFate::kStalled) {
@@ -194,7 +198,14 @@ void ServiceApp::codec(const uint8_t* data, size_t len, void* user) {
     }
 }
 
+static void writeKeyFile(const char* path, const char* word, const char* name);
+
 void ServiceApp::touchEvent(const aa::TouchEventOut& ev, void* user) {
+    // iDrive reads the touchscreen too, under Android Auto: its app tells a screen a touch opened from one the driver
+    // chose by this file. A finger going down or up only, not every move.
+    if (ev.action == 0 || ev.action == 1) {
+        writeKeyFile(contract::kTouchFile, "touch", ev.action ? "up" : "down");
+    }
     static_cast<ServiceApp*>(user)->session.postTouchEvent(ev);
 }
 
@@ -444,6 +455,7 @@ void ServiceApp::ended(void* user) {
     ServiceApp* a = static_cast<ServiceApp*>(user);
     // No stop()/join here: this callback runs on the AA session thread.
     a->mic.request(false);
+    a->audio.sessionEnded();
     a->kombi.onSessionEnded();
     a->kombiMost.onSessionEnded();
     const bool goodbye = a->session.phoneSaidGoodbye();

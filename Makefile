@@ -44,6 +44,7 @@ USB_OBJ = $(USB_SRC:.cpp=.o)
 DAEMON_SRC = platform/alps_spp.cpp platform/alps_spp_codec.cpp platform/evo_ap.cpp \
              platform/evo_ap_config.cpp platform/evo_spp_snapshot.cpp platform/evo_touch.cpp platform/evo_knob.cpp \
              platform/vmost_client.cpp platform/evo_control.cpp platform/evo_sdr_sensors.cpp platform/evo_mic.cpp \
+             platform/evo_alsa_out.cpp platform/evo_audio.cpp platform/audio_route.cpp \
              $(KOMBI_SRC) platform/evo_bmw_guidance.cpp platform/evo_pill.cpp \
              platform/peek_timing.cpp platform/wireless_loop.cpp platform/service_app.cpp platform/main.cpp \
              platform/wifi_link.cpp $(USB_SRC)
@@ -57,7 +58,7 @@ CAPTURE_OBJ = tools/evo_capture.o
 ARM_OBJ = $(sort $(DAEMON_OBJ) $(PLATFORM_OBJ) $(SUPERVISOR_OBJ) $(CHECK_OBJ) $(CAPTURE_OBJ))
 # The service's modules tests/test_wireless_lifecycle.cpp links around its fake Alps link and handshake.
 LIFECYCLE_OBJ = $(PLATFORM_OBJ) platform/evo_touch.o platform/evo_knob.o platform/vmost_client.o platform/evo_control.o \
-                platform/evo_mic.o platform/evo_pill.o $(KOMBI_OBJ) platform/evo_bmw_guidance.o platform/peek_timing.o \
+                platform/evo_mic.o platform/evo_alsa_out.o platform/evo_audio.o platform/audio_route.o platform/evo_pill.o $(KOMBI_OBJ) platform/evo_bmw_guidance.o platform/peek_timing.o \
                 platform/wifi_link.o $(USB_OBJ)
 
 VIDEO_LIBS = -l:libxsvideo.so.4 -l:libdrm_omap.so.1 -l:libdrm.so.2 -lpthread -lrt
@@ -90,7 +91,7 @@ aa-supervisor: $(SUPERVISOR_OBJ)
 # iDrive PluginApp (installed in /opt/hmi/data/ro/Plugins/EntryAad, loaded by HmiMain3D at boot). Its objects are
 # position independent and hidden: HmiMain3D only looks up pluginAppInfo, the one symbol the library exports.
 HMI_SRC = hmiapp/entry_aa_app.cpp hmiapp/bmw_framework.cpp hmiapp/app_log.cpp hmiapp/app_guards.cpp \
-          hmiapp/service_link.cpp hmiapp/car_signals.cpp hmiapp/hold_machine.cpp hmiapp/idrive_coding.cpp
+          hmiapp/carplay_tab.cpp hmiapp/hmi_thread.cpp hmiapp/service_link.cpp hmiapp/car_signals.cpp hmiapp/hold_machine.cpp hmiapp/idrive_coding.cpp
 HMI_OBJ = $(HMI_SRC:.cpp=.o)
 HMI_LIBDIRS = -L$(SYSROOT)/opt/hmi/lib -Wl,-rpath-link,$(SYSROOT)/opt/hmi/lib
 hmiapp: hmiapp/libEntryAad.so
@@ -184,10 +185,23 @@ test-host: test-parsers test-spp-host test-kombi-host test-gps-host test-capture
 	    -o tests/fake-libasound.so
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_evo_mic.cpp platform/evo_mic.cpp -ldl -o tests/test-evo-mic
 	./tests/test-evo-mic $(CURDIR)/tests/fake-libasound.so
+	$(HOST_CXX) $(HOST_FLAGS) tests/test_audio_route.cpp platform/audio_route.cpp platform/vmost_client.cpp \
+	    platform/evo_process.cpp -ldl -lpthread -o tests/test-audio-route
+	./tests/test-audio-route $(CURDIR)/tests/fake-vmostclient.so
+	gcc -std=c99 -Wall -Wextra -Werror -shared -fPIC tests/fake_asound.c -o tests/fake-asound.so
+	$(HOST_CXX) $(HOST_FLAGS) tests/test_evo_audio.cpp platform/evo_audio.cpp platform/evo_alsa_out.cpp \
+	    platform/audio_route.cpp platform/vmost_client.cpp platform/evo_process.cpp -ldl -lpthread -o tests/test-evo-audio
+	./tests/test-evo-audio $(CURDIR)/tests/fake-asound.so
+	$(HOST_CXX) $(HOST_FLAGS) tests/test_audio_mixer.cpp -o tests/test-audio-mixer
+	./tests/test-audio-mixer
+	$(HOST_CXX) $(HOST_FLAGS) tests/test_prompt_path.cpp -o tests/test-prompt-path
+	./tests/test-prompt-path
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_spawn_attr.cpp -o tests/test-spawn-attr
 	./tests/test-spawn-attr
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_popup_peek.cpp -o tests/test-popup-peek
 	./tests/test-popup-peek
+	$(HOST_CXX) $(HOST_FLAGS) tests/test_wifi_channel.cpp -o tests/test-wifi-channel
+	./tests/test-wifi-channel
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_hold_machine.cpp hmiapp/hold_machine.cpp -o tests/test-hold-machine
 	./tests/test-hold-machine
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_child_reaper.cpp -o tests/test-child-reaper
@@ -217,6 +231,8 @@ test-host: test-parsers test-spp-host test-kombi-host test-gps-host test-capture
 	./tests/test-update-install
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_update_flow.cpp -o tests/test-update-flow
 	./tests/test-update-flow
+	$(HOST_CXX) $(HOST_FLAGS) tests/test_video_pace.cpp -o tests/test-video-pace
+	./tests/test-video-pace
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_pb.cpp -o tests/test-pb
 	./tests/test-pb
 	$(HOST_CXX) $(HOST_FLAGS) tests/test_volume_pill.cpp -o tests/test-volume-pill

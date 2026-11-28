@@ -70,7 +70,7 @@ bool AASession::dispatch(uint8_t channel, const Message& message) {
             onStart(channel, message);
             break;
         case Route::kAudioStop:
-            printf("[AASession] >>> Received AV STOP_INDICATION on Channel %u.\n", channel);
+            onAudioStop(channel);
             break;
         case Route::kInputBinding:
             onInputBinding(channel);
@@ -193,7 +193,7 @@ void AASession::onDiscovery() {
     printf("[AASession] >>> Received ServiceDiscoveryRequest from phone! Sending ServiceDiscoveryResponse...\n");
     const Message response = message::discoveryResponse(
         buildCarServiceDiscovery(kDhuSdpProtobuf, kDhuSdpProtobufLen, vehicleFile_, softwareVersion_, display_,
-                                 carMake_, codedSide_, codedModel_));
+                                 carMake_, codedSide_, codedModel_, audio_.fn != nullptr));
     if (sendSealed(channel::kControl, response)) {
         printf("[AASession] >>> Sent ServiceDiscoveryResponse (%u bytes)\n", static_cast<unsigned>(response.size()));
     }
@@ -291,6 +291,17 @@ void AASession::onStart(uint8_t channel, const Message& message) {
     }
     printf("[AASession] >>> AV START_INDICATION on Channel %u (session %u)\n", channel,
            session == kNoField ? 0u : session);
+    if (channel::isAudioSink(channel) && audioStream_.fn) {
+        const uint32_t config = bodyField(message, 2);  // index in the channel's list of configurations
+        audioStream_.fn(channel, true, config == kNoField ? 0 : config, audioStream_.user);
+    }
+}
+
+void AASession::onAudioStop(uint8_t channel) {
+    printf("[AASession] >>> Received AV STOP_INDICATION on Channel %u.\n", channel);
+    if (audioStream_.fn) {
+        audioStream_.fn(channel, false, 0, audioStream_.user);
+    }
 }
 
 // Media of any channel: counted, video handed to the callbacks, everything acked. The phone counts each media message
@@ -305,6 +316,10 @@ void AASession::onMedia(uint8_t channel, uint16_t id, const Message& message) {
     if (channel::isAudioSink(channel) && id == msg::kMediaData) {
         // Sound plays over the car's Bluetooth: phone audio is only counted (8-byte timestamp, then s16le PCM).
         if (message.size() > kTimestampedHeader) {
+            if (audio_.fn) {
+                audio_.fn(channel, &message[kTimestampedHeader], message.size() - kTimestampedHeader,
+                          bigEndian64(&message[kMessageIdSize]), audio_.user);
+            }
             uint32_t& count = audioMessages_[channel == channel::kMediaAudio ? 1 : 0];
             ++count;
             if (count <= kAudioLoggedFirst || count % kAudioLogEvery == 0) {

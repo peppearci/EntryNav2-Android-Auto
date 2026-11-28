@@ -12,6 +12,10 @@ QEMU avec les bibliothèques de la voiture).
 
 - Sans-fil : le point d'accès de la voiture n'offre plus le 802.11n (`ieee80211n=0`, réglé en mémoire de hostapd avec U-APSD, avant la même reconstruction de la balise). Sur une X1 F48, une capture déchiffrée pendant des saccades montrait des trames du téléphone acquittées par la voiture puis perdues à l'intérieur (26 % des segments de données), contre 0,09 % sans 802.11n ([#203](https://github.com/Jiraiya43/EntryNav2-Android-Auto/issues/203)). Le réglage vaut pour tout le Wi-Fi de la voiture et limite son débit à 54 Mbit/s. Essayé en voiture (X1 F48) dans une version personnelle qui contient ce changement : amélioration nette aux premiers essais, pas d'essais prolongés.
 
+### Version personnelle (F48), non publiée
+
+- La description du service ne propose que l'écran principal (canal vidéo 6), sans les canaux 2 à 5 du modèle.
+
 ## [0.13.0-rc.12] - 2026-11-27 · PC
 
 Version candidate pour le sans-fil : l'économie d'énergie U-APSD retirée aussi au téléphone qui a rejoint le
@@ -41,6 +45,10 @@ sur PC et sous QEMU, **pas encore essayée en voiture**.
 
 ### Ajouté
 
+- Journaux conservés : pendant une séance, une ligne `[Video]` toutes les 10 s donne les images et les Ko de vidéo
+  reçus, le plus long écart entre deux images, la remise la plus lente au décodeur, les images perdues et leur retard
+  à l'arrivée sur l'image la plus rapide de la séance, pour voir si
+  la voiture retient la vidéo quand elle saccade. Testé sur PC.
 - Traduction polonaise du menu Android Auto de l'iDrive, affichée quand l'iDrive est en polonais (au lieu de
   l'anglais). Comme les autres langues, les textes restent en ASCII, sans lettres accentuées (« laczenie » pour
   « łączenie ») ([#176](https://github.com/Jiraiya43/EntryNav2-Android-Auto/pull/176), essayée sur une F44 ; textes de la

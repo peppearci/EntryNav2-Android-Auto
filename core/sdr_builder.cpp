@@ -23,6 +23,8 @@ const uint32_t kInputSourceField = 4;    // in a service
 const uint32_t kAudioTypeField = 2;      // in a media sink
 const uint32_t kVideoConfigField = 4;    // in a media sink
 const uint32_t kResolutionField = 1;     // in a video config: the canvas, 1 800x480, 2 1280x720, 3 1920x1080
+const uint32_t kFrameRateField = 2;      // in a video config: 1 60 fps, 2 30 fps (the template's)
+const uint32_t kFps60 = 1;
 const uint32_t kWidthMarginField = 3;    // in a video config, with kHeightMarginField
 const uint32_t kHeightMarginField = 4;
 const uint32_t kDensityField = 5;  // in a video config, with kRealDensityField
@@ -111,6 +113,10 @@ bool tuneVideoConfig(const pb::Field& config, Bytes& out, const DisplayPlan& dis
         if (field.type == pb::kVarint && field.number == kResolutionField) {
             templateCanvas = field.value == display.resolution;
             pb::appendUint(to, field.number, display.resolution);
+            return true;
+        }
+        if (field.type == pb::kVarint && field.number == kFrameRateField && display.fps60) {
+            pb::appendUint(to, field.number, kFps60);
             return true;
         }
         if (field.type == pb::kVarint && !templateCanvas &&
@@ -339,6 +345,29 @@ int removeMediaChannel(std::vector<uint8_t>& sdr) {
     return removed;
 }
 
+int removeExtraVideoSinks(std::vector<uint8_t>& sdr) {
+    int removed = 0;
+    Bytes out;
+    const bool ok = pb::rewriteMessage(sdr.data(), sdr.size(), out, [&](const pb::Field& service, Bytes&) -> bool {
+        // Their input sources go too: they name the removed displays (display 1 and 2).
+        if (!isChannel(service, channel::kVideoDisplay1) && !isChannel(service, channel::kVideoDisplay2) &&
+            !isChannel(service, channel::kInputDisplay1) && !isChannel(service, channel::kInputDisplay2)) {
+            return false;
+        }
+        ++removed;
+        return true;
+    });
+    if (!ok || !removed) {
+        return 0;
+    }
+    sdr.swap(out);
+    printf("[SDR] dropped %d services of the extra displays (video %u, %u; input %u, %u): the main display (channel %u) "
+           "only\n",
+           removed, channel::kVideoDisplay2, channel::kVideoDisplay1, channel::kInputDisplay2, channel::kInputDisplay1,
+           channel::kVideo);
+    return removed;
+}
+
 // In place: GUIDANCE (1) and SYSTEM_AUDIO (2) are both one-byte values.
 int retypeGuidanceSink(std::vector<uint8_t>& sdr) {
     int changed = 0;
@@ -379,7 +408,7 @@ void setDiscoveryTrim(DiscoveryTrim trim) {
 
 std::vector<uint8_t> buildCarServiceDiscovery(const uint8_t* base, size_t baseLen, const char* vehicleFile,
                                               const char* softwareVersion, const DisplayPlan& display, const char* make,
-                                              DriverPosition codedSide, const char* codedModel) {
+                                              DriverPosition codedSide, const char* codedModel, bool wifiAudio) {
     SdrIdentity identity;
     identity.driverPosition = codedSide;  // before the file, whose "side=" and "model=" win
     if (codedModel && validCarModel(codedModel)) {
@@ -401,11 +430,19 @@ std::vector<uint8_t> buildCarServiceDiscovery(const uint8_t* base, size_t baseLe
     declareFuel(sdr, identity.fuel);
     tuneMainDisplay(sdr, display);
     declareTouchscreen(sdr, display);
-    removeMediaChannel(sdr);
+    removeExtraVideoSinks(sdr);
+    if (wifiAudio) {
+        printf("[SDR] sound over Wi-Fi: media sink (channel %u) and guidance sink (channel %u) kept\n",
+               channel::kMediaAudio, channel::kGuidanceAudio);
+    } else {
+        removeMediaChannel(sdr);
+    }
     if (g_trim) {
         g_trim(sdr);
     }
-    retypeGuidanceSink(sdr);
+    if (!wifiAudio) {
+        retypeGuidanceSink(sdr);
+    }
     return sdr;
 }
 

@@ -38,6 +38,7 @@ HoldMachine::HoldMachine(HoldIo& io)
       waitSince_(0),
       askedAt_(0),
       asks_(0),
+      unheldPopups_(0),
       inCall_(false),
       callEnd_(0),
       gear_(kGearUnknown),
@@ -233,36 +234,54 @@ bool HoldMachine::appKeyRecent() {
 // station to another frequency and iDrive raised that page by itself (#138). Back to the blank state at once, a
 // bounded number of times per window so a page raised over and over cannot start a fight. A key pressed just before
 // (the service's file) is the driver's choice: the hard key step aside.
-bool HoldMachine::winBackRadioPage(long now) {
-    if (screen_ != kRadioStationScreen) {
+// iDrive left the blank state without a key for it: it raised its radio page by itself (#138), or it read a touch meant
+// for Android Auto (it gets them too: its header buttons and swipes act under the picture). Back to the blank state.
+bool HoldMachine::winBack(long now) {
+    const bool radio = screen_ == kRadioStationScreen;
+    bool touched = false;
+    long age = 0;
+    for (size_t i = 0; i < sizeof(kTouchScreens) / sizeof(kTouchScreens[0]); ++i) {
+        if (screen_ == kTouchScreens[i]) {
+            touched = io_.touchAge(&age) && age >= 0 && age <= kTouchS;
+        }
+    }
+    if (!radio && !touched) {
         return false;
     }
-    long age = 0;
     if (io_.hardKeyAge(&age) && age >= 0 && age <= kHardKeyS) {  // dated after now: not recent (appKeyRecent)
         if (!leftSeen_) {
-            say("hold: iDrive's radio page %ld s after a key left to iDrive: the driver's choice", age);
+            say("hold: iDrive's %s %ld s after a key left to iDrive: the driver's choice",
+                radio ? "radio page" : "screen", age);
         }
         return false;
     }
-    if (!radioSince_ || now - radioSince_ >= kRadioWindowS) {
-        radioSince_ = now;
-        radioBacks_ = 0;
-    }
-    if (radioBacks_ >= kRadioBacksMax) {
-        if (!leftSeen_) {
-            say("hold: iDrive's radio page again, %d times in %d s: Android Auto steps aside this time", radioBacks_,
-                kRadioWindowS);
+    // Only the radio page is counted: iDrive raises it by itself. A touched screen needs a touch under 3 s old each
+    // time, and quick taps are how Android Auto is used.
+    if (radio) {
+        if (!radioSince_ || now - radioSince_ >= kRadioWindowS) {
+            radioSince_ = now;
+            radioBacks_ = 0;
         }
-        return false;
+        if (radioBacks_ >= kRadioBacksMax) {
+            if (!leftSeen_) {
+                say("hold: iDrive's radio page again, %d times in %d s: Android Auto steps aside this time",
+                    radioBacks_, kRadioWindowS);
+            }
+            return false;
+        }
+        ++radioBacks_;
     }
-    ++radioBacks_;
     leftSeen_ = 0;
     holdTries_ = 0;
     menuRouteTries_ = 0;
     popupTried_ = false;
-    say("hold: iDrive raised its radio page (screen %d) without a key: back to state %u, %d of %d in %d s", screen_,
-        kAaState, radioBacks_, kRadioBacksMax, kRadioWindowS);
-    fireHold("iDrive raised its radio page", now);
+    if (radio) {
+        say("hold: iDrive raised its radio page (screen %d) without a key: back to state %u, %d of %d in %d s", screen_,
+            kAaState, radioBacks_, kRadioBacksMax, kRadioWindowS);
+    } else {
+        say("hold: iDrive screen %d under Android Auto after a touch: back to state %u", screen_, kAaState);
+    }
+    fireHold(radio ? "iDrive raised its radio page" : "a touch opened an iDrive screen", now);
     return true;
 }
 
@@ -481,6 +500,7 @@ void HoldMachine::bringIdrive(const ServiceState& service, long now) {
         askedAt_ = now;
         waiting_ = false;
         unheld_ = true;
+        unheldPopups_ = 0;
         holding_ = true;
         hideSent_ = false;
         holdGaveUp_ = false;
@@ -508,6 +528,24 @@ void HoldMachine::askWithoutHold(long now) {
     if (menuFocused_) {
         holdTries_ = 0;
         fireHold("our menu opened under Android Auto", now);
+        return;
+    }
+    // On the car our menu never reports focus 1 and the radio may take the screen as our popup closes (app.log,
+    // 21/11): whatever lies under Android Auto takes its touches (USB row toggled, FM list). Own popup again.
+    if (unheldPopups_ < kUnheldPopupTries) {
+        if (!popupOpen_) {
+            popupOpen_ = true;
+            io_.ownPopup(true);
+            say("hold: iDrive screen %d under Android Auto: our own popup opened (event %u) to ask under it", screen_,
+                kEvOwnPopup);
+            return;
+        }
+        ++unheldPopups_;
+        popupOpen_ = false;
+        io_.triggerEvent(kEvHoldAa);
+        io_.ownPopup(false);
+        say("hold: event %u -> state %u asked under our popup while unheld (try %d), popup closed", kEvHoldAa,
+            kAaState, unheldPopups_);
         return;
     }
     io_.triggerEvent(kEvOpenMenu);
@@ -685,6 +723,7 @@ void HoldMachine::poll(const ServiceState& service, long now) {
             // iDrive may refuse until a key is pressed: Android Auto stays, and our menu is asked for every second.
             holdGaveUp_ = true;
             unheld_ = true;
+            unheldPopups_ = 0;
             askedAt_ = now;
             asks_ = 0;
             say("hold: iDrive did not show state %u, even through our menu: Android Auto stays, without the hold",
@@ -697,7 +736,7 @@ void HoldMachine::poll(const ServiceState& service, long now) {
     if (keepForAppKey("a key kept Android Auto on screen (poll)", now)) {
         return;
     }
-    if (winBackRadioPage(now)) {
+    if (winBack(now)) {
         return;
     }
     if (!leftSeen_ || now - leftSeen_ > 3) {

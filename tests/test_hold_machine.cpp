@@ -47,7 +47,7 @@ int g_failures = 0;
 
 class Recorder : public HoldIo {
 public:
-    Recorder() : appKey(false), appKeyAt(0), hardKey(false), hardKeyAt(0), now(nullptr), reads(0) {}
+    Recorder() : appKey(false), appKeyAt(0), hardKey(false), hardKeyAt(0), touch(false), touchAt(0), now(nullptr), reads(0) {}
     void triggerEvent(unsigned event) override {
         char text[16];
         snprintf(text, sizeof(text), "event %u", event);
@@ -79,6 +79,14 @@ public:
         return true;
     }
 
+    bool touchAge(long* seconds) override {
+        if (!touch) {
+            return false;
+        }
+        *seconds = *now - touchAt;
+        return true;
+    }
+
     std::vector<std::string> out;
     std::vector<std::string> logs;
     ServiceState service;
@@ -86,6 +94,8 @@ public:
     long appKeyAt;  // when the service wrote the file, on the car's clock below
     bool hardKey;   // the service's file of the last key left to iDrive
     long hardKeyAt;
+    bool touch;  // the service's file of the last touch sent to the phone
+    long touchAt;
     const long* now;  // that clock
     int reads;
 };
@@ -251,8 +261,10 @@ void automaticStartRefused() {
         CHECK_OUT(c, "");  // Android Auto stays on screen: iDrive may refuse until a key is pressed
         CHECK(c.hold.holding());
         CHECK(c.logged("even through our menu: Android Auto stays, without the hold"));
+        c.polls(6);
+        CHECK_OUT(c, "own popup 1, event 52, own popup 0, own popup 1, event 52, own popup 0, own popup 1, event 52, own popup 0");  // our popup, three times
         c.polls(3);
-        CHECK_OUT(c, "event 51, event 51, event 51");  // our menu, every second
+        CHECK_OUT(c, "event 51, event 51, event 51");  // then our menu, every second
         c.menu(true);                                  // iDrive performs our events again
         CHECK_OUT(c, "event 52");
         c.blankShown();
@@ -350,13 +362,37 @@ void waitsAsideForIdrive() {
         c.overlay(1);
         c.poll();
         CHECK_OUT(c, "");  // the poll that sees it on screen
-        c.polls(60);
-        CHECK(c.take().size() == 60 * 8 + 59 * 2);  // "event 51" sixty times, nothing else
+        c.polls(6);
+        CHECK_OUT(c, "own popup 1, event 52, own popup 0, own popup 1, event 52, own popup 0, own popup 1, event 52, own popup 0");
+        c.polls(54);
+        CHECK(c.take().size() == 54 * 8 + 53 * 2);  // then "event 51" every second, nothing else
         c.menu(true);
         CHECK_OUT(c, "event 52");
         CHECK(c.logged("iDrive opened our menu after 62 request(s): taking the hold"));
         c.blankShown();
         c.polls(20);
+        CHECK_OUT(c, "");
+        CHECK(c.hold.holding() && c.hold.blankShown());
+    }
+    {  // unheld over the radio screen (the car, 21/11: FM took the screen as our popup closed): own popup, event 52
+        Car c;
+        connected(c);
+        c.overlay(2);
+        c.polls(3);
+        c.overlay(1);
+        c.hold.screenChanged(523);
+        c.poll();
+        c.take();
+        c.poll();
+        CHECK_OUT(c, "own popup 1");
+        CHECK(c.logged("iDrive screen 523 under Android Auto: our own popup opened"));
+        c.poll();
+        CHECK_OUT(c, "event 52, own popup 0");
+        CHECK(c.logged("asked under our popup while unheld (try 1)"));
+        c.blankShown();
+        c.poll();
+        CHECK(c.logged("iDrive is on our blank state after"));
+        c.polls(10);
         CHECK_OUT(c, "");
         CHECK(c.hold.holding() && c.hold.blankShown());
     }
@@ -437,6 +473,8 @@ void olderServiceRefused() {
     c.overlay(1);
     c.polls(7);
     CHECK_OUT(c, "event 51, own popup 1, event 52, own popup 0, event 51, event 51, event 52");
+    c.polls(7);
+    c.take();  // the poll that gives up, then our popup three times
     c.polls(3);
     CHECK_OUT(c, "event 51, event 51, event 51");
     c.menu(true);
@@ -988,6 +1026,95 @@ void radioPage() {
     }
 }
 
+// iDrive reads the touches too, under Android Auto (F48, 26/11): a tap in the top left corner opened its main menu, a
+// swipe its DAB page, and Android Auto stepped aside as for a hard key.
+void touchLeaks() {
+    const int screens[] = {3, 20, 30, 883};
+    for (int i = 0; i < 4; ++i) {  // right after a touch, no key: back to the blank state, no step aside
+        Car c;
+        heldOnBlank(c);
+        c.io.touch = true;
+        c.io.touchAt = c.now;
+        c.screen(screens[i]);
+        c.blankLeft();
+        CHECK_OUT(c, "");
+        c.poll();
+        CHECK_OUT(c, "event 52");
+        CHECK(c.logged("under Android Auto after a touch"));
+        c.blankShown();
+        c.polls(5);
+        CHECK_OUT(c, "");
+        CHECK(c.hold.holding());
+    }
+    {  // a touch older than 3 s does not explain it: the hard key step aside
+        Car c;
+        heldOnBlank(c);
+        c.io.touch = true;
+        c.io.touchAt = c.now - 4;
+        c.screen(3);
+        c.blankLeft();
+        c.poll();
+        c.poll();
+        CHECK_OUT(c, "hide");
+    }
+    {  // a key left to iDrive as well: the driver's choice
+        Car c;
+        heldOnBlank(c);
+        c.io.touch = true;
+        c.io.touchAt = c.now;
+        c.io.hardKey = true;
+        c.io.hardKeyAt = c.now;
+        c.screen(3);
+        c.blankLeft();
+        c.poll();
+        c.poll();
+        CHECK_OUT(c, "hide");
+    }
+    {  // a screen not seen opened by a touch (a warning, BMW navigation): not fought
+        Car c;
+        heldOnBlank(c);
+        c.io.touch = true;
+        c.io.touchAt = c.now;
+        c.screen(300);
+        c.blankLeft();
+        c.poll();
+        c.poll();
+        CHECK_OUT(c, "hide");
+    }
+    {  // tap after tap: won back every time, no limit
+        Car c;
+        heldOnBlank(c);
+        c.io.touch = true;
+        for (int i = 0; i < 12; ++i) {
+            c.io.touchAt = c.now;
+            c.screen(3);
+            c.blankLeft();
+            c.poll();
+            CHECK_OUT(c, "event 52");
+            c.blankShown();
+            c.poll();
+            c.take();
+        }
+        CHECK(c.hold.holding());
+    }
+    {  // touches do not use up the radio page's 4
+        Car c;
+        heldOnBlank(c);
+        c.io.touch = true;
+        c.io.touchAt = c.now;
+        c.screen(3);
+        c.blankLeft();
+        c.poll();
+        CHECK_OUT(c, "event 52");
+        c.blankShown();
+        c.poll();
+        c.radioPage();
+        c.poll();
+        CHECK_OUT(c, "event 52");
+        CHECK(c.logged("back to state 13, 1 of 4"));
+    }
+}
+
 void hardKeys() {
     {  // MENU: confirmed on a second poll, Android Auto steps aside; no event when it does
         Car c;
@@ -1509,6 +1636,7 @@ int main() {
     calls();
     appKeys();
     radioPage();
+    touchLeaks();
     hardKeys();
     stepsAsideByItself();
     optionPanelThenBack();

@@ -8,6 +8,8 @@
 // the USB half of a wired one in usb_loop.
 // clang-format off
 #include "alps_spp.hpp"
+#include "audio_route.hpp"
+#include "evo_audio.hpp"
 #include "car_brand.hpp"
 #include "car_series.hpp"
 #include "driver_side.hpp"
@@ -36,6 +38,9 @@
 #include <cstring>
 #include <unistd.h>
 #include <cerrno>
+#include <fstream>
+#include <iterator>
+#include <string>
 // clang-format on
 
 namespace {
@@ -199,6 +204,10 @@ void readCarSeries(char* out) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    // The sound route helper, run by the service itself (audio_route.hpp): nothing else of the service starts.
+    if (argc == 4 && !strcmp(argv[1], "--audio-route")) {
+        return evo::audioRouteMain(argv[2], argv[3]);
+    }
     // No closeInheritedFds() here: libxsvideo opens /dev/kmsg in its constructor, before main(), and logs its errors
     // there; closing it would hand its number to our next socket. The supervisor, our only parent, already closed
     // what it inherited and opens nothing without close-on-exec.
@@ -332,10 +341,15 @@ int main(int argc, char** argv) {
              aa::brandName(brand), display.hiddenSide, display.phoneWidth(), display.phoneHeight(),
              display.leftInset());
     }
+    display.fps60 = access(evo::contract::kVideo60, F_OK) == 0;
+    ELOG("Main", "video: %s fps asked of the phone%s", display.fps60 ? "60" : "30",
+         display.fps60 ? " (file video-60fps)" : "");
     evo::ServiceApp app(kAaPort, video, &quit);
     app.videoConfig.setDisplay(display.canvasWidth, display.canvasHeight, display.width, display.height,
                                display.shownWidth, display.shownHeight);
-    app.videoConfig.holdCloseFrames = !usb;  // pairs come from the Wi-Fi's bursts, not the cable
+    // pairs come from the Wi-Fi's bursts, not the cable. Never at 60 fps (every frame is close to the last one) nor
+    // with the sound over Wi-Fi: the wait is on the session thread, which also feeds the audio.
+    app.videoConfig.holdCloseFrames = !usb && !display.fps60 && access(evo::contract::kAudioWifi, F_OK) != 0;
     app.session.setDisplay(display);
     app.session.setCarMake(aa::brandName(brand));
     app.session.setCodedDriverSide(readCodedDriverSide());
@@ -352,6 +366,13 @@ int main(int argc, char** argv) {
     evo::EvoKnob knob;
     evo::EvoControl control;
     const bool logsKept = access(evo::contract::kMaintenance, F_OK) == 0;
+    // Sound over Wi-Fi only with its settings file, and only if the car's sound library loads: else the phone is told
+    // about no media sink and its sound stays on the car's Bluetooth.
+    evo::AudioSettings audioSettings;
+    if (evo::loadAudioSettings(evo::contract::kAudioWifi, audioSettings) && app.audio.start(audioSettings)) {
+        app.session.setAudioCallbacks(evo::EvoAudio::onData, evo::EvoAudio::onStream, &app.audio);
+        ELOG("Main", "sound over Wi-Fi: music and announcements played by this service");
+    }
     if (usb) {
         ELOG("Main", "USB cable: no Bluetooth change, no Wi-Fi, no TCP server; media over the BMW Bluetooth source");
     } else {
@@ -359,6 +380,13 @@ int main(int argc, char** argv) {
         if (!evo::loadAccessPoint(app.ap, source)) {
             ELOG("Main", "car hotspot (wlan0) or its credentials unavailable");
             return 1;
+        }
+        std::ifstream channelFile(evo::contract::kWifiChannel);
+        std::string channelText((std::istreambuf_iterator<char>(channelFile)), std::istreambuf_iterator<char>());
+        const int channel = evo::parseWifiChannel(channelText);
+        if (channel) {
+            ELOG("Main", "Wi-Fi channel %d asked in %s: %s", channel, evo::contract::kWifiChannel,
+                 evo::setAccessPointChannel(channel) ? "switched" : "hostapd refused");
         }
         app.server.setHotspotAddress(app.ap.ip);  // listening address and the subnet a phone must come from
         if (logsKept) {
@@ -512,6 +540,7 @@ int main(int argc, char** argv) {
                 paceMs = nowMs;
                 app.session.takeLongestSilenceMs();  // the start of the session is not a silence
                 app.video.takeFrameGaps();
+                app.videoPace.restart();
             } else if (nowMs - paceMs >= 10000) {
                 const evo::FrameGapStats gaps = app.video.takeFrameGaps();
                 ELOG("Session",
@@ -519,6 +548,12 @@ int main(int argc, char** argv) {
                      "one, %u held (longest %u ms)",
                      (nowMs - paceMs + 500) / 1000, app.session.takeLongestSilenceMs(), gaps.frames, gaps.early,
                      evo::kFrameGapMs, gaps.held, gaps.longestHoldMs);
+                const evo::VideoPaceTotals video = app.videoPace.take();
+                ELOG("Video",
+                     "in %u s: %u frames, %u KB, longest gap between frames %u ms, slowest hand-off to the decoder "
+                     "%u ms, %u lost; frames %u to %u ms late",
+                     (nowMs - paceMs + 500) / 1000, video.frames, video.kbytes, video.gapMaxMs, video.feedMaxMs,
+                     video.lost, video.lateMinMs, video.lateMaxMs);
                 paceMs = nowMs;
             }
         }
